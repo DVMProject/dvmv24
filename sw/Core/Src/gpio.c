@@ -54,11 +54,8 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LED_HB_GPIO_Port, LED_HB_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(USB_RENUM_GPIO_Port, USB_RENUM_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LED_LINK_Pin|LED_ACT_Pin|LED_USB_Pin|DCE_RTS_Pin
-                          |DCE_TXCLK_Pin|DCE_TXD_Pin|DCE_DTR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LED_LINK_Pin|LED_ACT_Pin|LED_USB_Pin|USB_ENUM_Pin
+                          |DCE_RTS_Pin|DCE_TXCLK_Pin|DCE_TXD_Pin|DCE_DTR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = LED_HB_Pin;
@@ -67,17 +64,10 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_HB_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PtPin */
-  GPIO_InitStruct.Pin = USB_RENUM_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(USB_RENUM_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PBPin PBPin PBPin PBPin
-                           PBPin PBPin PBPin */
-  GPIO_InitStruct.Pin = LED_LINK_Pin|LED_ACT_Pin|LED_USB_Pin|DCE_RTS_Pin
-                          |DCE_TXCLK_Pin|DCE_TXD_Pin|DCE_DTR_Pin;
+                           PBPin PBPin PBPin PBPin */
+  GPIO_InitStruct.Pin = LED_LINK_Pin|LED_ACT_Pin|LED_USB_Pin|USB_ENUM_Pin
+                          |DCE_RTS_Pin|DCE_TXCLK_Pin|DCE_TXD_Pin|DCE_DTR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
