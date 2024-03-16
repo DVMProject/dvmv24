@@ -153,7 +153,7 @@ bool VCPWrite(uint8_t *data, uint16_t len)
 bool VCPWriteP25Frame(const uint8_t *data, uint16_t len)
 {
     // Start byte, length byte, cmd byte, and a 0x00 pad to maintain dvm compliance
-    uint8_t buffer[len + 3];
+    uint8_t buffer[len + 4];
     buffer[0] = DVM_FRAME_START;
     buffer[1] = (uint8_t)len + 4;
     buffer[2] = CMD_P25_DATA;
@@ -174,11 +174,31 @@ bool VCPWriteP25Frame(const uint8_t *data, uint16_t len)
 }
 
 /**
+ * @brief Write a debug message to the USB port, using the DVMHost format
+ * 
+ * @param *msg message to write
+ * @param len length of message in bytes
+ * 
+ * @return true on success, false on error (buffer full, etc)
+*/
+bool VCPWriteDebugMsg(const char *msg, uint16_t len)
+{
+    uint8_t buffer[len + 3];
+    buffer[0] = DVM_FRAME_START;
+    buffer[1] = (uint8_t)len + 3;
+    buffer[2] = CMD_DEBUG1;
+
+    memcpy(buffer + 3, msg, len);
+
+    return VCPWrite(buffer, len + 3);
+}
+
+/**
  * @brief Toggles the 1.5k resistor on D+ to renumerate the USB device
 */
-void VCPRenumerate()
+void VCPEnumerate()
 {
-    USB_RENUM(0);
+    USB_ENUM(0);
     HAL_Delay(50);
-    USB_RENUM(1);
+    USB_ENUM(1);
 }

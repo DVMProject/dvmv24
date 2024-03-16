@@ -13,6 +13,13 @@
 extern "C" {
 #endif
 
+// Log over USART2 config
+#define UART2_BAUDRATE 115200
+#define UART2_LOGGING
+
+// Log over VCP config
+#define VCP_LOGGING
+
 // Global logging level switches
 #define SHOW_DEBUG
 #define SHOW_TRACE

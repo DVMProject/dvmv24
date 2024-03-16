@@ -141,9 +141,9 @@ int main(void)
     SerialClear(&huart2);
     SerialStartup(&huart2);
 
-    // Renumerate the VCP
-    //log_info("Renumerating USB VCP");
-    //VCPRenumerate();
+    // Enumerate the VCP
+    //log_info("Enumerating USB VCP");
+    VCPEnumerate();
 
     // Start sync serial handler
     log_info("Starting synchronous serial handler");

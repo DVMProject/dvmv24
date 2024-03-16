@@ -21,7 +21,7 @@ extern "C" {
 #define VCP_TX_BUF_LEN      256
 #define VCP_RX_BUF_LEN      256
 
-#define USB_RENUM(state)    HAL_GPIO_WritePin(USB_RENUM_GPIO_Port, USB_RENUM_Pin, state)
+#define USB_ENUM(state)    HAL_GPIO_WritePin(USB_ENUM_GPIO_Port, USB_ENUM_Pin, state)
 
 // DVM Serial Protocol Defines
 enum DVM_COMMANDS {
@@ -45,7 +45,8 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len);
 void VCPCallback();
 bool VCPWrite(uint8_t *data, uint16_t len);
 bool VCPWriteP25Frame(const uint8_t *data, uint16_t len);
-void VCPRenumerate();
+bool VCPWriteDebugMsg(const char *msg, uint16_t len);
+void VCPEnumerate();
 
 #ifdef __cplusplus
 }
