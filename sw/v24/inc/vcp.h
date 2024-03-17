@@ -18,8 +18,8 @@ extern "C" {
 #include "main.h"
 #include "log.h"
 
-#define VCP_TX_BUF_LEN      256
-#define VCP_RX_BUF_LEN      256
+#define VCP_TX_BUF_LEN      512
+#define VCP_RX_BUF_LEN      512
 
 #define USB_ENUM(state)    HAL_GPIO_WritePin(USB_ENUM_GPIO_Port, USB_ENUM_Pin, state)
 
@@ -45,7 +45,6 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len);
 void VCPCallback();
 bool VCPWrite(uint8_t *data, uint16_t len);
 bool VCPWriteP25Frame(const uint8_t *data, uint16_t len);
-bool VCPWriteDebugMsg(const char *msg, uint16_t len);
 void VCPEnumerate();
 
 #ifdef __cplusplus

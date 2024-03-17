@@ -83,16 +83,6 @@ static void stdout_callback(log_Event *ev) {
   memset(fullBuf, 0, MAX_MSG_LENGTH);
 }
 
-static void vcp_callback(log_Event *ev) {
-    char fullBuf[MAX_MSG_LENGTH];
-    uint16_t len = sprintf(
-        fullBuf, "%-5s %s:%d: ",
-        level_strings[ev->level], ev->file, ev->line
-    );
-    VCPWriteDebugMsg(fullBuf, len);
-    memset(fullBuf, 0, MAX_MSG_LENGTH);
-}
-
 static void lock(void)   {
   if (L.lock) { L.lock(true, L.udata); }
 }
@@ -161,12 +151,7 @@ void log_log(int level, const char *file, int line, const char *fmt, ...) {
   if (!L.quiet && level >= L.level) {
     init_event(&ev, stderr);
     va_start(ev.ap, fmt);
-    #ifdef UART2_LOGGING
     stdout_callback(&ev);
-    #endif
-    #ifdef VCP_LOGGING
-    vcp_callback(&ev);
-    #endif
     va_end(ev.ap);
   }
 

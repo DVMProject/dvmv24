@@ -211,7 +211,9 @@ void HDLCSendUI(uint8_t *msgData, uint8_t len)
     hdlcEncodeAndSendFrame(data, len + 2);
     // Update timer
     hdlcLastTx = HAL_GetTick();
+    #ifdef INFO_HDLC
     log_info("Sent UI frame");
+    #endif
 }
 
 /**
@@ -422,7 +424,9 @@ uint8_t HDLCParseMsg(uint8_t* rawMsg, uint8_t rawLen)
             }
             break;
         case HDLC_CTRL_UI:
+            #ifdef INFO_HDLC
             log_info("Got UI frame");
+            #endif
             hdlcLastRx = HAL_GetTick();
             // Write frame to VCP
             VCPWriteP25Frame(msg_data, data_len);

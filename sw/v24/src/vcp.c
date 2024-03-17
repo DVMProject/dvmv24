@@ -59,6 +59,7 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len)
 */
 void VCPCallback()
 {
+    // RX Buffer First
     // Wait for the start frame byte
     uint8_t byte = 0;
     // Try to read until either the buffer is empty or we get a start frame
@@ -116,6 +117,43 @@ void VCPCallback()
         }
         LED_USB(0);
     }
+
+    // TX next, similar but we don't care about the command
+    // Buffer for TX message
+    uint8_t txBuf[VCP_TX_BUF_LEN];
+    // Wait for the start frame byte
+    byte = 0;
+    // Try to read until either the buffer is empty or we get a start frame
+    while (!FifoPop(&vcpTxFifo, &byte) && (byte != DVM_FRAME_START)) {}
+    
+    // if we got the start frame, read the rest of the message
+    if (byte == DVM_FRAME_START)
+    {
+        LED_USB(1);
+        // Put start byte at index 0
+        txBuf[0] = byte;
+        // Get the length which should be the next byte
+        uint8_t length;
+        if (FifoPop(&vcpTxFifo, &length))
+        {
+            log_error("Reached end of VCP TX fifo before length byte was read");
+            return;
+        }
+        // Put length byte in position 2
+        txBuf[1] = length;
+        // Write the rest of the bytes to the buffer
+        for (uint16_t i = 2; i < length; i++)
+        {
+            if (FifoPop(&vcpTxFifo, &txBuf[i]))
+            {
+                log_error("Reached end of VCP TX fifo before entire message was read");
+                return;
+            }
+        }
+        // Send
+        CDC_Transmit_FS(txBuf, length);
+        LED_USB(0);
+    }
 }
 
 /**
@@ -128,18 +166,14 @@ void VCPCallback()
 */
 bool VCPWrite(uint8_t *data, uint16_t len)
 {
-    LED_USB(1);
-    uint8_t ret = CDC_Transmit_FS(data, len);
-    LED_USB(0);
-    if (ret != USBD_OK)
+    for (int i = 0; i < len; i++)
     {
-        log_error("Failed to write to USB with code %d (port not open?)", ret);
-        return false;
+        if (FifoPush(&vcpTxFifo, data[i]))
+        {
+            return false;
+        }
     }
-    else
-    {
-        return true;
-    }
+    return true;
 }
 
 /**
@@ -171,26 +205,6 @@ bool VCPWriteP25Frame(const uint8_t *data, uint16_t len)
     #endif
 
     return VCPWrite(buffer, len+4);
-}
-
-/**
- * @brief Write a debug message to the USB port, using the DVMHost format
- * 
- * @param *msg message to write
- * @param len length of message in bytes
- * 
- * @return true on success, false on error (buffer full, etc)
-*/
-bool VCPWriteDebugMsg(const char *msg, uint16_t len)
-{
-    uint8_t buffer[len + 3];
-    buffer[0] = DVM_FRAME_START;
-    buffer[1] = (uint8_t)len + 3;
-    buffer[2] = CMD_DEBUG1;
-
-    memcpy(buffer + 3, msg, len);
-
-    return VCPWrite(buffer, len + 3);
 }
 
 /**
