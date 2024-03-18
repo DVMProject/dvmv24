@@ -18,8 +18,10 @@ extern "C" {
 #include "log.h"
 #include "main.h"
 
-#define SYNC_RX_BUF_LEN 256
-#define SYNC_TX_BUF_LEN 4096
+#define SYNC_RX_BUF_LEN 1024
+#define SYNC_TX_BUF_LEN 1024
+
+#define SYNC_TX_DELAY   32  // ms to wait once TX fifo has data before we start to send
 
 // HDLC parameters
 #define HDLC_BIT_STUFFED    0x7C    // (b01111100) we skip the next bit in this case (we've received 5 1s in a row)

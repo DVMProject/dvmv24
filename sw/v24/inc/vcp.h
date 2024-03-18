@@ -18,8 +18,8 @@ extern "C" {
 #include "main.h"
 #include "log.h"
 
-#define VCP_TX_BUF_LEN      512
-#define VCP_RX_BUF_LEN      512
+#define VCP_TX_BUF_LEN      1024
+#define VCP_RX_BUF_LEN      1024
 
 #define USB_ENUM(state)    HAL_GPIO_WritePin(USB_ENUM_GPIO_Port, USB_ENUM_Pin, state)
 

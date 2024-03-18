@@ -143,7 +143,8 @@ void NextTxByte()
 {
     // Reset flag
     syncTxFlag = false;
-    // Reset to idle character (7E) if we've got nothing in the FIFO
+    
+    // Check if we have data to send, and pop until we don't
     if (FifoPop(&syncTxFifo, &syncTxByte))
     {
         syncTxByte = HDLC_SYNC_WORD;
@@ -151,9 +152,9 @@ void NextTxByte()
     }
     else
     {
-        // Turn on the ACT led if we're sending anything other than the idle flags
         LED_ACT(1);
     }
+
     // If we got a true flag, note it
     if (syncTxByte == HDLC_SYNC_WORD) { syncTxFlag = true; }
     // Unescape things if needed

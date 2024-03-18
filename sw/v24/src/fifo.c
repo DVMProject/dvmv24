@@ -15,7 +15,7 @@
  * @brief Pushes data into the end of the fifo
  * @param *c fifo pointer
  * @param data data to store
- * @return 0 on success, -1 if fifo empty
+ * @return 0 on success, -1 if fifo full
 */
 int FifoPush(FIFO_t *c, uint8_t data)
 {

@@ -113,6 +113,7 @@ void VCPCallback()
             HexArrayToStr((char*)hexStrBuf, &vcpRxMsg[4], length - 4);
             log_trace("P25 Frame: %s", hexStrBuf);
             #endif
+            // Send the UI
             HDLCSendUI(p25data, length - 4);
         }
         LED_USB(0);
