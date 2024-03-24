@@ -18,8 +18,8 @@ extern "C" {
 #include "log.h"
 #include "main.h"
 
-#define SYNC_RX_BUF_LEN 1024
-#define SYNC_TX_BUF_LEN 1024
+#define SYNC_RX_BUF_LEN 512
+#define SYNC_TX_BUF_LEN 512
 
 #define SYNC_TX_DELAY   32  // ms to wait once TX fifo has data before we start to send
 

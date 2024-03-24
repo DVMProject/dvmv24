@@ -24,6 +24,7 @@ extern enum RxState SyncRxState;
 unsigned long hdlcLastRx = 0;
 unsigned long hdlcLastTx = 0;
 unsigned long lastStatus = 0;
+unsigned long lastUIFrame = 0;
 
 // Address of the V24 peer (quantar), received from first SABM
 uint8_t peerAddress = 0x0;
@@ -55,6 +56,15 @@ uint16_t crc16(const uint8_t *data, uint8_t len)
     return crc;
 }
 
+void HdlcReset()
+{
+    if (HDLCPeerConnected)
+    {
+        HDLCPeerConnected = false;
+        log_info("HDLC reset");
+    }
+}
+
 /**
  * @brief called every loop of main, handles HDLC timers
 */
@@ -66,7 +76,6 @@ void HdlcCallback()
         if (HAL_GetTick() - hdlcLastRx > RX_TIMEOUT)
         {
             log_error("HDLC RX timeout, dropping sync!");
-            HDLCPeerConnected = false;
             SyncDrop();
             hdlcLastRx = HAL_GetTick();
         }
@@ -164,6 +173,8 @@ void hdlcEncodeAndSendFrame(const uint8_t *data, const uint8_t len)
         }
         
     }
+    // Update timer
+    hdlcLastTx = HAL_GetTick();
 }
 
 /**
@@ -195,8 +206,6 @@ void HDLCSendRR()
 {
     const uint8_t data[2] = { HDLC_ADDRESS, 0x01 };
     hdlcEncodeAndSendFrame(data, 2);
-    // Update timer
-    hdlcLastTx = HAL_GetTick();
     log_info("Sent RR frame");
 }
 
@@ -209,8 +218,6 @@ void HDLCSendUI(uint8_t *msgData, uint8_t len)
     memcpy(&data[2], msgData, len);
     // Encode frame
     hdlcEncodeAndSendFrame(data, len + 2);
-    // Update timer
-    hdlcLastTx = HAL_GetTick();
     #ifdef INFO_HDLC
     log_info("Sent UI frame");
     #endif

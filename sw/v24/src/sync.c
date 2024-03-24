@@ -103,6 +103,7 @@ void SyncDrop()
     rxMsgStarted = false;
     rxMsgComplete = false;
     FifoClear(&syncRxFifo);
+    HdlcReset();
     log_error("Sync dropped");
 }
 
