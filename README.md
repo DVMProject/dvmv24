@@ -4,7 +4,9 @@ No more cisco routers and WIC cards! Now you can connect your quantar directly t
 <img src="pics/front.jpg" width="256"><img src="pics/back.jpg" width="256"><img src="pics/quan.jpg" width="256">
 
 ## Hardware
-DVM-V24 boards are available from the [W3AXL Online Store](https://store.w3axl.com/products/dvm-v24-usb-converter-for-v24-equipment). Schematics for the board are included in the `hw` directory to build your own adapters.
+DVM-V24 boards are available from the [W3AXL Online Store](https://store.w3axl.com/products/dvm-v24-usb-converter-for-v24-equipment). Purchasing through W3AXL supports development efforts for the DVMProject team and future hardware projects!
+
+Schematics for the board are also included in the `hw` directory to build your own adapters.
 
 ## Firmware
 Firmware is availble in this repo, under the `fw` directory. It's written in bare C, generated from STM32CubeMX. You will need an STLink programmer in order to flash the boards with the latest version of software.
