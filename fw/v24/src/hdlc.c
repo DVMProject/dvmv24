@@ -62,6 +62,7 @@ void HdlcReset()
     {
         HDLCPeerConnected = false;
         log_info("HDLC reset");
+        VCPWriteDebug1("HDLC reset");
     }
 }
 
@@ -76,6 +77,7 @@ void HdlcCallback()
         if (HAL_GetTick() - hdlcLastRx > RX_TIMEOUT)
         {
             log_error("HDLC RX timeout, dropping sync!");
+            VCPWriteDebug1("HDLC RX timeout, dropping sync!");
             SyncDrop();
             hdlcLastRx = HAL_GetTick();
         }
@@ -98,15 +100,18 @@ void HdlcCallback()
         #ifdef PERIODIC_STATUS
         if (HDLCPeerConnected)
         {
-            log_info("V24 peer connected. Frames: [RX: %d, TX: %d, ER: %d]", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);   
+            log_info("V24 peer connected. Frames: [RX: %d, TX: %d, ER: %d]", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);
+            VCPWriteDebug4("V24 peer connected. RX/TX/ER:", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);
         }
         else if (SyncRxState == SYNCED)
         {
             log_info("HDLC synced, waiting for peer. Frames: [RX: %d, TX: %d, ER: %d]", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);
+            VCPWriteDebug4("HDLC synced, waiting for peer. RX/TX/ER:", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);
         }
         else if (SyncRxState == SEARCH)
         {
             log_warn("HDLC frame sync lost");
+            VCPWriteDebug1("HDLC frame sync lost");
         }
         #endif
     }

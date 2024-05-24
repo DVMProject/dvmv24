@@ -178,7 +178,7 @@ bool VCPWrite(uint8_t *data, uint16_t len)
 }
 
 /**
- * @brief Write a P25 frame to the USB port, using the DVMHost format
+ * @brief Write a P25 frame to the USB port, using the DVMHost modem format
  * 
  * @param *data data array to write
  * @param len length of data array
@@ -206,6 +206,162 @@ bool VCPWriteP25Frame(const uint8_t *data, uint16_t len)
     #endif
 
     return VCPWrite(buffer, len+4);
+}
+
+/**
+ * @brief Write a debug message to the USB port, using the DVMHost modem format
+ * 
+ * @param *text string to write (must be properly formatted string with null terminator)
+ * 
+ * @return true on success, false on error
+*/
+bool VCPWriteDebug1(const char *text)
+{
+    // Get length of string
+    uint8_t len = strlen(text);
+
+    // Return on invalid string
+    if (!len)
+    {
+        return false;
+    }
+
+    // Allocate the array 
+    uint8_t *msg = malloc((len + 3) * sizeof *msg);
+
+    // Populate header
+    msg[0] = DVM_FRAME_START;
+    msg[1] = len + 3;
+    msg[2] = CMD_DEBUG1;
+
+    // Copy rest of message
+    memcpy(msg + 3, text, len);
+
+    // Send
+    return VCPWrite(msg, len + 3);
+}
+
+/**
+ * @brief Write a debug message to the USB port with 1 trailing integer, using the DVMHost modem format
+ * 
+ * @param *text string to write (must be properly formatted string with null terminator)
+ * @param n1 the number to write
+ * 
+ * @return true on success, false on error
+*/
+bool VCPWriteDebug2(const char *text, int16_t n1)
+{
+    // Get length of string
+    uint8_t len = strlen(text);
+
+    // Return on invalid string
+    if (!len)
+    {
+        return false;
+    }
+
+    // Allocate the array (+3 for header, +2 for int)
+    uint8_t *msg = malloc((len + 5) * sizeof *msg);
+
+    // Populate header
+    msg[0] = DVM_FRAME_START;
+    msg[1] = len + 5;
+    msg[2] = CMD_DEBUG2;
+
+    // Copy rest of message
+    memcpy(msg + 3, text, len);
+
+    // Copy the number
+    msg[len+3] = (n1 >> 8) & 0xFF;
+    msg[len+4] = n1 & 0xFF;
+
+    // Send
+    return VCPWrite(msg, len + 5);
+}
+
+/**
+ * @brief Write a debug message to the USB port with 2 trailing integers, using the DVMHost modem format
+ * 
+ * @param *text string to write (must be properly formatted string with null terminator)
+ * @param n1 the first number to write
+ * @param n2 the second number to write
+ * 
+ * @return true on success, false on error
+*/
+bool VCPWriteDebug3(const char *text, int16_t n1, int16_t n2)
+{
+    // Get length of string
+    uint8_t len = strlen(text);
+
+    // Return on invalid string
+    if (!len)
+    {
+        return false;
+    }
+
+    // Allocate the array (+3 for header, +4 for 2 int)
+    uint8_t *msg = malloc((len + 7) * sizeof *msg);
+
+    // Populate header
+    msg[0] = DVM_FRAME_START;
+    msg[1] = len + 7;
+    msg[2] = CMD_DEBUG3;
+
+    // Copy rest of message
+    memcpy(msg + 3, text, len);
+
+    // Copy the numbers
+    msg[len+3] = (n1 >> 8) & 0xFF;
+    msg[len+4] = n1 & 0xFF;
+    msg[len+5] = (n2 >> 8) & 0xFF;
+    msg[len+6] = n2 & 0xFF;
+
+    // Send
+    return VCPWrite(msg, len + 7);
+}
+
+/**
+ * @brief Write a debug message to the USB port with 3 trailing integers, using the DVMHost modem format
+ * 
+ * @param *text string to write (must be properly formatted string with null terminator)
+ * @param n1 the first number to write
+ * @param n2 the second number to write
+ * @param n3 the third number to write
+ * 
+ * @return true on success, false on error
+*/
+bool VCPWriteDebug4(const char *text, int16_t n1, int16_t n2, int16_t n3)
+{
+    // Get length of string
+    uint8_t len = strlen(text);
+
+    // Return on invalid string
+    if (!len)
+    {
+        return false;
+    }
+
+    // Allocate the array (+3 for header, +6 for 3 int)
+    uint8_t *msg = malloc((len + 9) * sizeof *msg);
+
+    // Populate header
+    msg[0] = DVM_FRAME_START;
+    msg[1] = len + 9;
+    msg[2] = CMD_DEBUG4;
+
+    // Copy rest of message
+    memcpy(msg + 3, text, len);
+
+    // Copy the numbers
+    msg[len+3] = (n1 >> 8) & 0xFF;
+    msg[len+4] = n1 & 0xFF;
+    msg[len+5] = (n2 >> 8) & 0xFF;
+    msg[len+6] = n2 & 0xFF;
+    msg[len+7] = (n3 >> 8) & 0xFF;
+    msg[len+8] = n3 & 0xFF;
+
+    // Send
+    return VCPWrite(msg, len + 9);
 }
 
 /**

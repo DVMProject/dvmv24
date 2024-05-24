@@ -43,8 +43,15 @@ enum DVM_COMMANDS {
 
 void VCPRxITCallback(uint8_t* buf, uint32_t len);
 void VCPCallback();
+
 bool VCPWrite(uint8_t *data, uint16_t len);
 bool VCPWriteP25Frame(const uint8_t *data, uint16_t len);
+
+bool VCPWriteDebug1(const char *text);
+bool VCPWriteDebug2(const char *text, int16_t n1);
+bool VCPWriteDebug3(const char *text, int16_t n1, int16_t n2);
+bool VCPWriteDebug4(const char *text, int16_t n1, int16_t n2, int16_t n3);
+
 void VCPEnumerate();
 
 #ifdef __cplusplus
