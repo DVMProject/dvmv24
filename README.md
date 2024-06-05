@@ -9,6 +9,10 @@ DVM-V24 boards are available from the [W3AXL Online Store](https://store.w3axl.c
 
 Schematics for the board are also included in the `hw` directory to build your own adapters.
 
+### The `CLKSEL` Jumper
+
+This jumper connects the serial clock line to the `RXCLK` pin. Currently this jumper must be in place for the V24 adapter to work properly. In the future, the board will support external clocking, but for now the firmware only supports generating clocks for both TX & RX.
+
 ## Firmware
 Firmware is availble in this repo, under the `fw` directory. It's written in bare C, generated from STM32CubeMX. You will need an STLink programmer in order to flash the boards with the latest version of software.
 
