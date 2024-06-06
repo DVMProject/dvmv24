@@ -21,7 +21,8 @@ extern "C" {
 #define SYNC_RX_BUF_LEN 512
 #define SYNC_TX_BUF_LEN 512
 
-#define SYNC_TX_DELAY   32  // ms to wait once TX fifo has data before we start to send
+#define SYNC_TX_DELAY   32      // ms to wait once TX fifo has data before we start to send
+#define SYNC_RX_DELAY   1000    // ms to wait after startup/reset before starting RX sync routines
 
 // HDLC parameters
 #define HDLC_BIT_STUFFED    0x7C    // (b01111100) we skip the next bit in this case (we've received 5 1s in a row)

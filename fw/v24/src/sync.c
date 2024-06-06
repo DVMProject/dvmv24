@@ -70,6 +70,8 @@ uint16_t rxCurPos = 0;
 bool rxMsgStarted = false;
 bool rxMsgComplete = false;
 
+unsigned long syncRxTimer = 50; // timer for delay after sync reset/drop/startup
+
 /**
  * @brief Starts the timer interrupt handler
  * @param *tim pointer to the timer
@@ -90,6 +92,7 @@ void SyncResetRx()
     rxMsgStarted = false;
     rxMsgComplete = false;
     FifoClear(&syncRxFifo);
+    syncRxTimer = HAL_GetTick();
     log_info("Reset Sync RX");
 }
 
@@ -104,6 +107,7 @@ void SyncDrop()
     rxMsgComplete = false;
     FifoClear(&syncRxFifo);
     HdlcReset();
+    syncRxTimer = HAL_GetTick();
     log_error("Sync dropped");
 }
 
@@ -273,6 +277,14 @@ void RxMessageCallback()
 
 void RxBits()
 {
+    // Wait for timeout to clear
+    if (HAL_GetTick() - syncRxTimer < SYNC_RX_DELAY) {
+        return;
+    // 0 is our "done" state so we only print the log message once
+    } else if (syncRxTimer > 0) {
+        log_info("Sync RX starting");
+        syncRxTimer = 0;
+    }
     // Read the state of each RX pin
     bool rxd = GET_RXD();
     //bool rts = GET_RTS();

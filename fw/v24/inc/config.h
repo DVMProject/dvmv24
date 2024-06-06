@@ -21,7 +21,7 @@ extern "C" {
 //#define DEBUG_SYNC
 //#define TRACE_SYNC
 
-//#define INFO_HDLC
+#define INFO_HDLC
 //#define DEBUG_HDLC
 //#define TRACE_HDLC
 

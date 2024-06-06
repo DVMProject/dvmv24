@@ -82,7 +82,9 @@ void SerialWrite(UART_HandleTypeDef *huart, const char *data) {
     uint16_t len = strlen(data);
     for (int i=0; i<len; i++)
     {
-        FifoPush(&serialTxFifo, data[i]);
+        if (FifoPush(&serialTxFifo, data[i]) == -1) {
+            FifoClear(&serialTxFifo);
+        }
     }
 }
 

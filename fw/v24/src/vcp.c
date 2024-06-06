@@ -49,7 +49,9 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len)
     {
         if (FifoPush(&vcpRxFifo, buf[i]))
         {
-            log_error("VCP RX FIFO full!");
+            log_error("VCP RX FIFO full! Clearing buffer");
+            // Clear
+            FifoClear(&vcpRxFifo);
         }
     }
 }
@@ -171,6 +173,8 @@ bool VCPWrite(uint8_t *data, uint16_t len)
     {
         if (FifoPush(&vcpTxFifo, data[i]))
         {
+            log_error("VCP TX FIFO full! Clearing.");
+            FifoClear(&vcpTxFifo);
             return false;
         }
     }
