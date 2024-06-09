@@ -65,7 +65,11 @@ void VCPCallback()
     // Wait for the start frame byte
     uint8_t byte = 0;
     // Try to read until either the buffer is empty or we get a start frame
-    while (!FifoPop(&vcpRxFifo, &byte) && (byte != DVM_FRAME_START)) {}
+    while (!FifoPop(&vcpRxFifo, &byte) && (byte != DVM_FRAME_START)) {
+        if (byte != 0) {
+            log_warn("Got invalid byte from USB VCP: %02X", byte);
+        }
+    }
     
     // if we got the start frame, read the rest of the message
     if (byte == DVM_FRAME_START)
