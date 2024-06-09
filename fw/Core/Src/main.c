@@ -138,7 +138,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
     // Init stuff
     log_set_uart(&huart2);
-    SerialClear(&huart2);
+    //SerialClear(&huart2);
     SerialStartup(&huart2);
 
     // Enumerate the VCP
