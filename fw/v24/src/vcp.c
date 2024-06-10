@@ -237,6 +237,12 @@ bool VCPWriteDebug1(const char *text)
     // Allocate the array 
     uint8_t *msg = malloc((len + 3) * sizeof *msg);
 
+    // Make sure we alloc'd
+    if (!msg)
+    {
+        return false;
+    }
+
     // Populate header
     msg[0] = DVM_FRAME_START;
     msg[1] = len + 3;
@@ -246,7 +252,13 @@ bool VCPWriteDebug1(const char *text)
     memcpy(msg + 3, text, len);
 
     // Send
-    return VCPWrite(msg, len + 3);
+    bool ret = VCPWrite(msg, len + 3);
+
+    // Free
+    free(msg);
+
+    // Return
+    return ret;
 }
 
 /**
@@ -271,6 +283,12 @@ bool VCPWriteDebug2(const char *text, int16_t n1)
     // Allocate the array (+3 for header, +2 for int)
     uint8_t *msg = malloc((len + 5) * sizeof *msg);
 
+    // Make sure we alloc'd
+    if (!msg)
+    {
+        return false;
+    }
+
     // Populate header
     msg[0] = DVM_FRAME_START;
     msg[1] = len + 5;
@@ -284,7 +302,13 @@ bool VCPWriteDebug2(const char *text, int16_t n1)
     msg[len+4] = n1 & 0xFF;
 
     // Send
-    return VCPWrite(msg, len + 5);
+    bool ret = VCPWrite(msg, len + 5);
+
+    // Free
+    free(msg);
+
+    // Return
+    return ret;
 }
 
 /**
@@ -310,6 +334,12 @@ bool VCPWriteDebug3(const char *text, int16_t n1, int16_t n2)
     // Allocate the array (+3 for header, +4 for 2 int)
     uint8_t *msg = malloc((len + 7) * sizeof *msg);
 
+    // Make sure we alloc'd
+    if (!msg)
+    {
+        return false;
+    }
+
     // Populate header
     msg[0] = DVM_FRAME_START;
     msg[1] = len + 7;
@@ -325,7 +355,13 @@ bool VCPWriteDebug3(const char *text, int16_t n1, int16_t n2)
     msg[len+6] = n2 & 0xFF;
 
     // Send
-    return VCPWrite(msg, len + 7);
+    bool ret = VCPWrite(msg, len + 7);
+
+    // Free
+    free(msg);
+
+    // Return
+    return ret;
 }
 
 /**
@@ -352,6 +388,12 @@ bool VCPWriteDebug4(const char *text, int16_t n1, int16_t n2, int16_t n3)
     // Allocate the array (+3 for header, +6 for 3 int)
     uint8_t *msg = malloc((len + 9) * sizeof *msg);
 
+    // Make sure we alloc'd
+    if (!msg)
+    {
+        return false;
+    }
+
     // Populate header
     msg[0] = DVM_FRAME_START;
     msg[1] = len + 9;
@@ -369,7 +411,13 @@ bool VCPWriteDebug4(const char *text, int16_t n1, int16_t n2, int16_t n3)
     msg[len+8] = n3 & 0xFF;
 
     // Send
-    return VCPWrite(msg, len + 9);
+    bool ret = VCPWrite(msg, len + 9);
+
+    // Free
+    free(msg);
+
+    // Return
+    return ret;
 }
 
 /**
