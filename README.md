@@ -38,9 +38,12 @@ The following are the relevant fields that need to be configured in Quantar RSS:
 | External Transmit Clock | ENABLED |
 | RT/RT Configuration | DISABLED |
 
-
 #### `dvmdfsi` Configuration
 `dvmdfsi` must be configured to operate in seiral mode (`2`), with `theManufacturer` set to `true`, and have the correct serial port name specified. The DVM-V24 operates at a native `115200` baud.
 
 ### CCGW V24 Connection
 We are still investigating compatibility with the CCGW's V24 port. In theory, it should be possible, however early tests have shown the CCGW in Quantar compatibility mode does not properly mirror the Quantar's V24 port behavior.
+
+## Support
+
+Support is available on our Discord server - there are many users and project members online who can help with any issues you may encounter. [Join here!](https://discord.gg/3pBe8xgrEz)
