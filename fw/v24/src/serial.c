@@ -11,6 +11,7 @@
 #include "fifo.h"
 #include "stdbool.h"
 #include "config.h"
+#include "util.h"
 
 uint8_t serialDMABuffer[SERIAL_BUFFER_SIZE];
 
@@ -122,5 +123,10 @@ void SerialStartup(UART_HandleTypeDef *huart) {
     SerialWrite(huart, " v");
     SerialWriteLn(huart, VERSION_STRING);
     SerialWriteLn(huart, "    " DATE_STRING);
+    SerialWrite(huart, "    SERIAL: ");
+    // Get chip UID (24-character hex string)
+    char buffer[25];
+    getUidString(buffer);
+    SerialWriteLn(huart, buffer);
     SerialWriteLn(huart, "");
 }

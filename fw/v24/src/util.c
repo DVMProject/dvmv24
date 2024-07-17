@@ -7,6 +7,7 @@
 
 /* Self referential incude */
 #include "util.h"
+#include <inttypes.h>
 
 /**
  * @brief Converts an array of chars to a space-separated string with braces
@@ -49,7 +50,7 @@ uint8_t SetBitAtPos(uint8_t byte, uint8_t pos, bool value)
 }
 
 /**
- * @brief Prints an array of hex characters, space separated
+ * @brief Prints an array of hex characters
  * @param outBuf output buffer (must be 3x the length of input array)
  * @param array input array to print
  * @param len length of array
@@ -74,4 +75,38 @@ unsigned char reverseBits(unsigned char b)
     b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
     b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
     return b;
+}
+
+/**
+ * @brief Get the UID of the stm32 chip into a 12-byte buffer
+*/
+void getUid(uint8_t* buffer)
+{
+    memcpy(buffer, (void*)STM32_UUID, 12);
+}
+
+/**
+ * @brief Read the UID of the STM32 chip to a 25-byte hex string (null-terminated)
+ * 
+ * @param str 25-byte buffer to write to
+*/
+void getUidString(char *str)
+{
+    // Get the 12 byte UID
+    uint8_t buffer[12];
+    getUid(buffer);
+
+    // Print to string
+    for (int i = 0; i < 12; i++)
+    {
+        sprintf(str + (i * 2), "%02X", buffer[i]);
+    }
+}
+
+/**
+ * @breif Returns the flash size of the STM32F103 chip
+*/
+uint16_t readFlashSize()
+{
+    return (uint16_t)(0x1FF8007C);
 }

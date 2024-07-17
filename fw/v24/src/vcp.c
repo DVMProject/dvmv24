@@ -18,6 +18,8 @@
 #include "string.h"
 #include "hdlc.h"
 
+const char HARDWARE[] = "DVM-V24 FW " __TIME__ " " __DATE__;
+
 uint8_t vcpRxMsg[VCP_RX_BUF_LEN];
 
 extern bool USB_VCP_DTR;
@@ -122,6 +124,10 @@ void VCPCallback()
             // Send the UI
             HDLCSendUI(p25data, length - 4);
         }
+        else if (command == CMD_GET_VERSION)
+        {
+            sendVersion();
+        }
         LED_USB(0);
     }
 
@@ -209,11 +215,41 @@ bool VCPWriteP25Frame(const uint8_t *data, uint16_t len)
     #endif
     #ifdef TRACE_VCP
     uint8_t hexStrBuf[(len+3)*4];
-    printHexArray((char*)hexStrBuf, buffer, len+3);
+    printHexArray((char*)hexStrBuf, buffer, len+3, " ");
     log_trace("Sending %s", hexStrBuf);
     #endif
 
     return VCPWrite(buffer, len+4);
+}
+
+/**
+ * @brief Send the V24 board version and UID over the VCP
+ * 
+ * Stolen from the DVM modem firmware
+*/
+void sendVersion()
+{
+    uint8_t reply[200U];
+
+    reply[0U] = DVM_FRAME_START;
+    reply[1U] = 0U;
+    reply[2U] = CMD_GET_VERSION;
+    reply[3U] = 0x01U;     // protocol version
+    reply[4U] = 0x02U;  // CPU type (STM32)
+
+    // 16-byte UDID
+    memset(reply + 5U, 0x00U, 16U);
+    getUid(reply + 5U);
+
+    // HW description
+    uint8_t count = 21;
+    for (uint8_t i = 0U; i < sizeof(HARDWARE); i++, count++)
+        reply[count] = HARDWARE[i];
+
+    // Total length
+    reply[1U] = count;
+
+    VCPWrite(reply, count);
 }
 
 /**

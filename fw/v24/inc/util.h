@@ -18,6 +18,8 @@ extern "C" {
 #include <string.h>
 #include "log.h"
 
+#define STM32_UUID ((uint32_t *)0x1FFFF7E8)
+
 typedef struct {
     uint8_t const buffer;
     int head;
@@ -30,6 +32,9 @@ bool GetBitAtPos(uint8_t byte, uint8_t pos);
 uint8_t SetBitAtPos(uint8_t byte, uint8_t pos, bool value);
 void printHexArray(char *outBuf, uint8_t *array, uint8_t len);
 unsigned char reverseBits(unsigned char b);
+void getUid(uint8_t* buffer);
+void getUidString(char *str);
+void getCPU();
 
 #ifdef __cplusplus
 }

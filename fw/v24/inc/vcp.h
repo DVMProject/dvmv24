@@ -47,6 +47,8 @@ void VCPCallback();
 bool VCPWrite(uint8_t *data, uint16_t len);
 bool VCPWriteP25Frame(const uint8_t *data, uint16_t len);
 
+void sendVersion();
+
 bool VCPWriteDebug1(const char *text);
 bool VCPWriteDebug2(const char *text, int16_t n1);
 bool VCPWriteDebug3(const char *text, int16_t n1, int16_t n2);
