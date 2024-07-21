@@ -32,6 +32,8 @@ extern "C" {
 #define HDLC_ESCAPE_7E      0x5E    // Follows the escape code to escape a 0x7E
 #define HDLC_ESCAPE_7D      0x5D    // Follows the escape code to escape a 0x7D
 
+#define P25_LDU_FRAME_LENGTH_BYTES  216U
+
 // Pin Definitions (pin names are labelled in STM32CubeMX projet)
 #define GET_RXCLK(state)    HAL_GPIO_ReadPin(DCE_RXCLK_GPIO_Port, DCE_RXCLK_Pin)
 #define GET_RXD()           HAL_GPIO_ReadPin(DCE_RXD_GPIO_Port, DCE_RXD_Pin)
@@ -55,6 +57,7 @@ void SyncDrop();
 void SyncTimerCallback(void);
 bool SyncAddTxByte(const uint8_t byte);
 bool SyncAddTxBytes(const uint8_t *bytes, int len);
+uint8_t SyncGetTxFree();
 void RxMessageCallback();
 uint16_t StuffByte(uint8_t byte);
 

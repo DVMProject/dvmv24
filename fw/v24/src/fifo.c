@@ -33,6 +33,14 @@ int FifoPush(FIFO_t *c, uint8_t data)
 
     c->buffer[c->head] = data;
     c->head = next;
+
+    // Update our size
+    if (c->size < c->maxlen) {
+        c->size++;
+    } else {
+        log_warn("Somehow pushed to full fifo?");
+    }
+
     return 0;
 }
 
@@ -59,6 +67,14 @@ int FifoPop(FIFO_t *c, uint8_t *data)
 
     *data = c->buffer[c->tail];
     c->tail = next;
+    
+    // Update our size
+    if (c->size > 0) {
+        c->size--;
+    } else {
+        log_warn("Somehow popped from 0-size fifo?");
+    }
+
     return 0;
 }
 
@@ -66,5 +82,6 @@ void FifoClear(FIFO_t *c)
 {
     uint8_t data = 0;
     while (FifoPop(c, &data) != -1) {}
+    c->size = 0;
     return;
 }

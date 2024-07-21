@@ -442,3 +442,11 @@ void SyncTimerCallback(void)
         TXCLK_LOW();
     }
 }
+
+/**
+ * @brief Report the free space in the fifo, divided by the LDU frame size in bytes
+*/
+uint8_t SyncGetTxFree()
+{
+    return (syncTxFifo.maxlen - syncTxFifo.size) / P25_LDU_FRAME_LENGTH_BYTES;
+}

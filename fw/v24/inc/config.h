@@ -28,7 +28,7 @@ extern "C" {
 //#define DEBUG_VCP
 //#define TRACE_VCP
 
-#define VERSION_STRING  "1.0"
+#define VERSION_STRING  "2.0"
 #define DATE_STRING     __DATE__ " " __TIME__
 
 #define PERIODIC_STATUS
