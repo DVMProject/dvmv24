@@ -448,5 +448,10 @@ void SyncTimerCallback(void)
 */
 uint8_t SyncGetTxFree()
 {
-    return (syncTxFifo.maxlen - syncTxFifo.size) / P25_LDU_FRAME_LENGTH_BYTES;
+    uint16_t framesFree = (syncTxFifo.maxlen - syncTxFifo.size) / P25_LDU_FRAME_LENGTH_BYTES;
+    if (framesFree < 1)
+    {
+        log_warn("TX buffer running low: %d / %d bytes used", syncTxFifo.size, syncTxFifo.maxlen);
+    }
+    return framesFree;
 }

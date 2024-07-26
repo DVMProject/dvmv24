@@ -19,8 +19,8 @@ extern "C" {
 #include "log.h"
 #include "sync.h"
 
-#define VCP_TX_BUF_LEN      512
-#define VCP_RX_BUF_LEN      512
+#define VCP_TX_BUF_LEN      (P25_LDU_FRAME_LENGTH_BYTES * 2)
+#define VCP_RX_BUF_LEN      (P25_LDU_FRAME_LENGTH_BYTES * 2)
 
 #define USB_ENUM(state)    HAL_GPIO_WritePin(USB_ENUM_GPIO_Port, USB_ENUM_Pin, state)
 

@@ -98,15 +98,16 @@ void HdlcCallback()
     {
         lastStatus = HAL_GetTick();
         #ifdef PERIODIC_STATUS
+        uint32_t errFrames = rxTotalFrames - rxValidFrames;
         if (HDLCPeerConnected)
         {
-            log_info("V24 peer connected. Frames: [RX: %d, TX: %d, ER: %d]", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);
-            VCPWriteDebug4("V24 peer connected. RX/TX/ER:", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);
+            log_info("V24 peer connected. Frames RX: %u, TX: %u, ER: %u", rxValidFrames, txTotalFrames, errFrames);
+            VCPWriteDebug4("V24 peer connected. Frames RX/TX/ER:", rxValidFrames, txTotalFrames, errFrames);
         }
         else if (SyncRxState == SYNCED)
         {
-            log_info("HDLC synced, waiting for peer. Frames: [RX: %d, TX: %d, ER: %d]", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);
-            VCPWriteDebug4("HDLC synced, waiting for peer. RX/TX/ER:", rxValidFrames, txTotalFrames, rxTotalFrames - rxValidFrames);
+            log_info("HDLC synced, waiting for peer. Frames: [RX: %u, TX: %u, ER: %u]", rxValidFrames, txTotalFrames, errFrames);
+            VCPWriteDebug4("HDLC synced, waiting for peer. RX/TX/ER:", rxValidFrames, txTotalFrames, errFrames);
         }
         else if (SyncRxState == SEARCH)
         {
@@ -224,7 +225,7 @@ void HDLCSendUI(uint8_t *msgData, uint8_t len)
     // Encode frame
     hdlcEncodeAndSendFrame(data, len + 2);
     #ifdef INFO_HDLC
-    log_info("Sent UI frame");
+    log_info("Sent UI frame (len: %d)", len);
     #endif
 }
 
@@ -437,7 +438,7 @@ uint8_t HDLCParseMsg(uint8_t* rawMsg, uint8_t rawLen)
             break;
         case HDLC_CTRL_UI:
             #ifdef INFO_HDLC
-            log_info("Got UI frame");
+            log_info("Got UI frame (len: %d)", data_len);
             #endif
             hdlcLastRx = HAL_GetTick();
             // Write frame to VCP

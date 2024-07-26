@@ -33,6 +33,10 @@ extern "C" {
 
 #define PERIODIC_STATUS
 
+// P25 Frame sizes
+#define P25_LDU_FRAME_LENGTH_BYTES      216U
+#define P25_V24_LDU_FRAME_LENGTH_BYTES  370U
+
 #ifdef __cplusplus
 }
 #endif
