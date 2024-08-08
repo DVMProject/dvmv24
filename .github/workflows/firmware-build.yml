@@ -1,0 +1,21 @@
+name: Firmware CI Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+    - name: Install ARM GCC
+      uses: carlosperate/arm-none-eabi-gcc-action@v1
+    - name: make
+      run: make
+      working-directory: ./fw
