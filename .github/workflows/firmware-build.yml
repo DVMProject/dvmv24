@@ -16,6 +16,13 @@ jobs:
       uses: actions/checkout@v4
     - name: Install ARM GCC
       uses: carlosperate/arm-none-eabi-gcc-action@v1
-    - name: make
+    - name: Run make
       run: make
       working-directory: ./fw
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dvmv24-fw
+        path: |
+          ./fw/build/*.bin
+          ./fw/build/*.elf
