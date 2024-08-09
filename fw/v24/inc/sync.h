@@ -29,8 +29,8 @@ extern "C" {
 #define HDLC_ESCAPE_7E      0x5E    // Follows the escape code to escape a 0x7E
 #define HDLC_ESCAPE_7D      0x5D    // Follows the escape code to escape a 0x7D
 
-#define SYNC_RX_BUF_LEN (P25_V24_LDU_FRAME_LENGTH_BYTES * 2)
-#define SYNC_TX_BUF_LEN (P25_V24_LDU_FRAME_LENGTH_BYTES * 2)
+#define SYNC_RX_BUF_LEN (P25_V24_LDU_FRAME_LENGTH_BYTES * 3)
+#define SYNC_TX_BUF_LEN (P25_V24_LDU_FRAME_LENGTH_BYTES * 3)
 
 // Pin Definitions (pin names are labelled in STM32CubeMX projet)
 #define GET_RXCLK(state)    HAL_GPIO_ReadPin(DCE_RXCLK_GPIO_Port, DCE_RXCLK_Pin)

@@ -16,6 +16,7 @@
 #include "util.h"
 #include "config.h"
 #include "hdlc.h"
+#include "vcp.h"
 
 bool falling = true;
 bool txd = false;
@@ -449,9 +450,12 @@ void SyncTimerCallback(void)
 uint8_t SyncGetTxFree()
 {
     uint16_t framesFree = (syncTxFifo.maxlen - syncTxFifo.size) / P25_LDU_FRAME_LENGTH_BYTES;
+    // Reset buffers if we get low
     if (framesFree < 1)
     {
-        log_warn("TX buffer running low: %d / %d bytes used", syncTxFifo.size, syncTxFifo.maxlen);
+        log_error("TX buffer low: %d / %d bytes used, resetting buffer", syncTxFifo.size, syncTxFifo.maxlen);
+        VCPWriteDebug3("TX buffer low, clearing. Free/Total: ", syncTxFifo.size, syncTxFifo.maxlen);
+        FifoClear(&syncTxFifo);
     }
     return framesFree;
 }
