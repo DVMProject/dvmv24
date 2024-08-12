@@ -38,7 +38,7 @@ int FifoPush(FIFO_t *c, uint8_t data)
     if (c->size < c->maxlen) {
         c->size++;
     } else {
-        log_warn("Somehow pushed to full fifo?");
+        return -1;
     }
 
     return 0;
@@ -72,7 +72,7 @@ int FifoPop(FIFO_t *c, uint8_t *data)
     if (c->size > 0) {
         c->size--;
     } else {
-        log_warn("Somehow popped from 0-size fifo?");
+        return -1;
     }
 
     return 0;

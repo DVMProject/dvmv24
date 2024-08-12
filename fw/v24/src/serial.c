@@ -16,12 +16,12 @@
 uint8_t serialDMABuffer[SERIAL_BUFFER_SIZE];
 
 // Serial TX Fifo Buffer
-uint8_t serialTxBuf[SERIAL_FIFO_SIZE];
+uint8_t serialTxBuf[SERIAL_BUFFER_SIZE];
 FIFO_t serialTxFifo = {
     .buffer = serialTxBuf,
     .head = 0,
     .tail = 0,
-    .maxlen = SERIAL_FIFO_SIZE
+    .maxlen = SERIAL_BUFFER_SIZE
 };
 
 volatile bool serialTxSending = false;

@@ -22,6 +22,7 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "fault.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -87,7 +88,14 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+  __asm(
+    "MRS r0, MSP\n" // Default to the Main Stack Pointer
+    "MOV r1, lr\n"  // Load the current link register value
+    "MOVS r2, #4\n" // Load constant 4
+    "TST r1, r2\n"  // Test whether we are in master or thread mode
+    "BEQ base_fault_handler\n" // If in master mode, MSP is correct.
+    "MRS r0, PSP\n" // If we weren't in master mode, load PSP instead
+    "B base_fault_handler"); // Jump to the fault handler.
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {

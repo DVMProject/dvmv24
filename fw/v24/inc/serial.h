@@ -13,8 +13,7 @@
 extern "C" {
 #endif
 
-#define SERIAL_FIFO_SIZE    1024
-#define SERIAL_BUFFER_SIZE  256
+#define SERIAL_BUFFER_SIZE  1024
 
 // Self-serving fancy startup text
 #define W3AXL_LINE1 "\x1b[36m   _       _______ ___   _  __ __ "

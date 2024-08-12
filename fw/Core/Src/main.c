@@ -134,7 +134,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
     // Init stuff
     log_set_uart(&huart2);
@@ -168,7 +168,7 @@ int main(void)
         hbLED();
         linkLED();
         // Refresh the IWDG watchdog
-        HAL_IWDG_Refresh(&hiwdg);
+        //HAL_IWDG_Refresh(&hiwdg);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
