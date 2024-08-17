@@ -1,6 +1,6 @@
 
 # DVM-V24 USB V24 Adapter
-No more cisco routers and WIC cards! Now you can connect your quantar directly to a linked network without stacks of extra hardware. The DVM-V24 connects Quantars and other V24-capable equipment to the [DVMDFSI network bridge application](https://github.com/DVMProject/dvmdfsi).
+No more cisco routers and WIC cards! Now you can connect your quantar directly to a linked network without stacks of extra hardware. The DVM-V24 connects Quantars and other V24-capable equipment to the [DVM Host (dvmhost) software](https://github.com/DVMProject/dvmhost).
 
 <img src="pics/front.jpg" width="256"><img src="pics/back.jpg" width="256"><img src="pics/quan.jpg" width="256">
 
