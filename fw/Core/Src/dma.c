@@ -22,7 +22,7 @@
 #include "dma.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "config.h"
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
@@ -44,7 +44,7 @@ void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, NVIC_PRI_DMA, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
 
 }

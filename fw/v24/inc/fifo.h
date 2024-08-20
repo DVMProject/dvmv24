@@ -27,6 +27,7 @@ typedef struct {
 
 int FifoPush(FIFO_t *c, uint8_t data);
 int FifoPop(FIFO_t *c, uint8_t *data);
+int FifoPeek(FIFO_t *c, uint8_t *data);
 void FifoClear(FIFO_t *c);
 
 #ifdef __cplusplus

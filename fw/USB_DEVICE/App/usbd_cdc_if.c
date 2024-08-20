@@ -23,6 +23,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "vcp.h"
+#include "config.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -88,10 +89,10 @@
 /* Create buffer for reception and transmission           */
 /* It's up to user to redefine and/or remove those define */
 /** Received data over USB are stored in this buffer      */
-uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
+uint8_t UserRxBufferFS[P25_V24_LDU_FRAME_LENGTH_BYTES * 2];
 
 /** Data to send over USB CDC are stored in this buffer   */
-uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
+uint8_t UserTxBufferFS[P25_V24_LDU_FRAME_LENGTH_BYTES * 2];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 

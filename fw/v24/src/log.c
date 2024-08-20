@@ -53,9 +53,10 @@ static const char *level_colors[] = {
 };
 #endif
 
-static void millis_to_timestamp(char *buf, int millis)
+static void millis_to_timestamp(char *buf, uint32_t millis)
 {
-  uint8_t ms, sec, min, hr;
+  uint8_t sec, min, hr;
+  uint16_t ms;
   hr =  millis / (1000 * 60 * 60);
   min = millis / (1000 *60) % 60;
   sec = millis / (1000) % 60;

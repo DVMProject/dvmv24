@@ -25,7 +25,7 @@ typedef struct {
   va_list ap;
   const char *fmt;
   const char *file;
-  int time;
+  uint32_t time;
   void *udata;
   int line;
   int level;

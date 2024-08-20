@@ -14,12 +14,6 @@
 #include "util.h"
 #include "vcp.h"
 
-extern unsigned long rxValidFrames;
-extern unsigned long rxTotalFrames;
-extern unsigned long txTotalFrames;
-
-extern enum RxState SyncRxState;
-
 // Timers for various events
 unsigned long hdlcLastRx = 0;
 unsigned long hdlcLastTx = 0;
@@ -78,7 +72,7 @@ void HdlcCallback()
         {
             log_error("HDLC RX timeout, dropping sync!");
             VCPWriteDebug1("HDLC RX timeout, dropping sync!");
-            SyncDrop();
+            SyncReset();
             hdlcLastRx = HAL_GetTick();
         }
         
@@ -145,7 +139,7 @@ void hdlcEncodeAndSendFrame(const uint8_t *data, const uint8_t len)
     frame[len] = low(fcs);
     frame[len + 1] = high(fcs);
     // Trace
-    #ifdef DEBUG_HDLC
+    #ifdef TRACE_HDLC
     uint8_t hexStrBuf[(len + 2)*4];
     HexArrayToStr((char*)hexStrBuf, frame, len + 2);
     log_trace("Encoded HDLC: %s", hexStrBuf);
@@ -224,9 +218,7 @@ void HDLCSendUI(uint8_t *msgData, uint8_t len)
     memcpy(&data[2], msgData, len);
     // Encode frame
     hdlcEncodeAndSendFrame(data, len + 2);
-    #ifdef INFO_HDLC
     log_info("Sent UI frame (len: %d)", len);
-    #endif
 }
 
 /**
@@ -362,25 +354,25 @@ uint8_t HDLCUnescape(uint8_t *out, uint8_t *msg, uint8_t len)
 uint8_t HDLCParseMsg(uint8_t* rawMsg, uint8_t rawLen)
 {
     // Debug print hex buffer
-    #if defined(DEBUG_HDLC) || defined(TRACE_HDLC)
+    #ifdef TRACE_HDLC
     uint8_t hexStrBuf[rawLen * 4];
     #endif
 
     // Incremenet total frames processed
     rxTotalFrames++;
     // Log print
-    #ifdef DEBUG_HDLC
+    #ifdef TRACE_HDLC
     printHexArray((char*)hexStrBuf, rawMsg, rawLen);
-    log_debug("Processing %d-byte HDLC message:%s", rawLen, hexStrBuf);
+    log_trace("Processing %d-byte HDLC message:%s", rawLen, hexStrBuf);
     #endif
     // Escape
     uint8_t msg[rawLen];
     uint8_t len = rawLen - HDLCUnescape(msg, rawMsg, rawLen);
-    #ifdef DEBUG_HDLC
+    #ifdef TRACE_HDLC
     if (len != rawLen)
     {
         printHexArray((char*)hexStrBuf, msg, len);
-        log_debug("Escaped %d bytes to new %d-byte message:%s", rawLen - len, len, hexStrBuf);
+        log_trace("Escaped %d bytes to new %d-byte message:%s", rawLen - len, len, hexStrBuf);
     }
     #endif
     // Get parameters
@@ -433,13 +425,12 @@ uint8_t HDLCParseMsg(uint8_t* rawMsg, uint8_t rawLen)
             if (!HDLCPeerConnected)
             {
                 log_info("Connected to HDLC peer %02X", peerAddress);
+                VCPWriteDebug2("Connected to HDLC peer", peerAddress);
                 HDLCPeerConnected = true;
             }
             break;
         case HDLC_CTRL_UI:
-            #ifdef INFO_HDLC
             log_info("Got UI frame (len: %d)", data_len);
-            #endif
             hdlcLastRx = HAL_GetTick();
             // Write frame to VCP
             VCPWriteP25Frame(msg_data, data_len);

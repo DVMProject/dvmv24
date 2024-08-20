@@ -59,22 +59,39 @@ int FifoPop(FIFO_t *c, uint8_t *data)
         return -1;
     }
 
+    // Figure out where the new tail will be
     next = c->tail + 1;
     if (next >= c->maxlen)
     {
         next = 0;
     }
 
+    // Get the data at the current tail
     *data = c->buffer[c->tail];
+    
+    // Update the tail position
     c->tail = next;
     
     // Update our size
     if (c->size > 0) {
         c->size--;
     } else {
+        // We somehow got data from a 0-space FIFO
         return -1;
     }
 
+    return 0;
+}
+
+int FifoPeek(FIFO_t *c, uint8_t *data)
+{
+    // If we're empty, return -1
+    if (c->head == c->tail)
+    {
+        return -1;
+    }
+    // Return the value of the next data item without popping it
+    *data = c->buffer[c->tail];
     return 0;
 }
 

@@ -62,9 +62,6 @@ unsigned long txTotalFrames = 0;
 unsigned long lastHb = 0;
 unsigned long lastSync = 0;
 
-// From other files
-extern enum RxState SyncRxState;
-extern bool HDLCPeerConnected;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -134,7 +131,9 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
-  //MX_IWDG_Init();
+  #ifndef DISABLE_WATCHDOG
+  MX_IWDG_Init();
+  #endif
   /* USER CODE BEGIN 2 */
     // Init stuff
     log_set_uart(&huart2);
@@ -151,7 +150,12 @@ int main(void)
 
     // Done!
     log_info("Startup complete");
-    SyncResetRx();
+    SyncReset();
+
+    // Warn that watchdog is disbaled
+    #ifdef DISABLE_WATCHDOG
+    log_warn("System watchdog timers disbaled!");
+    #endif
 
   /* USER CODE END 2 */
 
@@ -168,7 +172,9 @@ int main(void)
         hbLED();
         linkLED();
         // Refresh the IWDG watchdog
-        //HAL_IWDG_Refresh(&hiwdg);
+        #ifndef DISABLE_WATCHDOG
+        HAL_IWDG_Refresh(&hiwdg);
+        #endif
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

@@ -19,16 +19,20 @@ extern "C" {
 #include "log.h"
 #include "sync.h"
 
-#define VCP_TX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 2)
-#define VCP_RX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 2)
+#define VCP_RX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 4)
+
+#define VCP_RX_TIMEOUT      100
 
 #define USB_ENUM(state)    HAL_GPIO_WritePin(USB_ENUM_GPIO_Port, USB_ENUM_Pin, state)
+
+#define USB_TX_RETRIES      3
 
 // DVM Serial Protocol Defines
 enum DVM_COMMANDS {
     CMD_GET_VERSION         = 0x00,
     CMD_GET_STATUS          = 0x01,
     CMD_SET_MODE            = 0x03,
+    CMD_CAL_DATA            = 0x08,
     CMD_P25_DATA            = 0x31,
     CMD_P25_LOST            = 0x32,
     CMD_P25_CLEAR           = 0x33,
@@ -48,6 +52,7 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len);
 void VCPCallback();
 
 bool VCPWrite(uint8_t *data, uint16_t len);
+bool VCPWriteAck(uint8_t cmd);
 bool VCPWriteP25Frame(const uint8_t *data, uint16_t len);
 
 void sendVersion();

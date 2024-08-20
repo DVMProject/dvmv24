@@ -119,10 +119,8 @@ void SerialStartup(UART_HandleTypeDef *huart) {
     SerialWriteLn(huart, W3AXL_LINE4);
     SerialWriteLn(huart, W3AXL_LINE5);
     SerialWriteLn(huart, "");
-    SerialWrite(huart, "    " PROG_NAME);
-    SerialWrite(huart, " v");
-    SerialWriteLn(huart, VERSION_STRING);
-    SerialWriteLn(huart, "    " DATE_STRING);
+    SerialWriteLn(huart, "    " VERSION_STRING);
+    SerialWriteLn(huart, "    " BUILD_DATE_STRING);
     SerialWrite(huart, "    SERIAL: ");
     // Get chip UID (24-character hex string)
     char buffer[25];

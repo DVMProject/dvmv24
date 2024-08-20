@@ -83,8 +83,13 @@ void SyncStartup(TIM_HandleTypeDef *tim)
     log_info("Sync Serial Clocks Started");
 }
 
-void SyncResetRx()
+/**
+ * @brief Reset RX sync state, clear buffers, etc
+*/
+void SyncReset()
 {
+    LED_ACT(0);
+    // Reset RX
     rxCurrentByte = 0;
     rxBitCounter = 0;
     SyncRxState = SEARCH;
@@ -93,23 +98,25 @@ void SyncResetRx()
     rxMsgStarted = false;
     rxMsgComplete = false;
     FifoClear(&syncRxFifo);
-    syncRxTimer = HAL_GetTick();
-    log_info("Reset Sync RX");
-}
-
-void SyncDrop()
-{
-    LED_ACT(0);
-    rxCurrentByte = 0;
-    rxBitCounter = 0;
-    SyncRxState = SEARCH;
-    rxCurPos = 0;
-    rxMsgStarted = false;
-    rxMsgComplete = false;
-    FifoClear(&syncRxFifo);
+    // Reset TX
+    FifoClear(&syncTxFifo);
+    txOnesCounter = 0;
+    txLastBit = 0;
+    syncTxByte = 0;
+    syncTxBytePos = 0;
+    syncLastTxByte = 0;
+    syncTxFlag = false;
+    // Reset counters
+    rxValidFrames = 0;
+    rxTotalFrames = 0;
+    txTotalFrames = 0;
+    // Reset HDLC
     HdlcReset();
+    // Reset RX timer last
     syncRxTimer = HAL_GetTick();
-    log_error("Sync dropped");
+    // Log
+    log_info("Reset Sync TX/RX");
+    VCPWriteDebug1("Reset Sync TX/RX");
 }
 
 /**
@@ -138,7 +145,7 @@ bool SyncAddTxBytes(const uint8_t *bytes, int len)
     {
         if (!SyncAddTxByte(bytes[i]))
         {
-            log_error("TX buffer ran out of space!");
+            log_error("Sync TX buffer ran out of space!");
             return false;
         }
     }
@@ -226,8 +233,15 @@ void RxMessageCallback()
 {
     // Do nothing without sync
     if (SyncRxState != SYNCED) {
+        // Clear the buffer if it's not empty
+        if (syncRxFifo.size > 0)
+        {
+            log_warn("RX not synced, clearing RX FIFO (had %d bytes)", syncRxFifo.size);
+            FifoClear(&syncRxFifo);
+        }
         return;
     }
+
     // Pop bytes from Fifo until the next sync word
     uint8_t newByte = 0;
     while (!FifoPop(&syncRxFifo, &newByte) && !rxMsgComplete)
@@ -264,7 +278,7 @@ void RxMessageCallback()
             // If we fail to parse the message, drop sync
             if (HDLCParseMsg(rxCurMsg, rxCurPos)) // minus 1 to remove the trailing flag (TODO: make it smarter)
             {
-                SyncDrop();
+                SyncReset();
             }
         }
         
@@ -284,6 +298,7 @@ void RxBits()
     // 0 is our "done" state so we only print the log message once
     } else if (syncRxTimer > 0) {
         log_info("Sync RX starting");
+        VCPWriteDebug1("Sync RX starting");
         syncRxTimer = 0;
     }
     // Read the state of each RX pin
@@ -303,6 +318,7 @@ void RxBits()
                 // Switch state to synced and reset the current byte
                 SyncRxState = SYNCED;
                 log_info("HDLC RX now synced");
+                VCPWriteDebug1("HDLC RX now synced");
                 rxCurrentByte = 0;
                 rxBitCounter = 0;
             }
@@ -325,7 +341,7 @@ void RxBits()
             else if (rxOnesCounter == 6 && rxd == 1)
             {
                 log_error("Received 7 consecutive 1s, this is bad, dropping sync!");
-                SyncDrop();
+                SyncReset();
             }
             else
             {
@@ -406,7 +422,7 @@ void RxBits()
                 else if (rxBitCounter > 8)
                 {
                     log_error("RX bit counter exceeded, dropping sync");
-                    SyncDrop();
+                    SyncReset();
                 }
             }
             
@@ -414,6 +430,7 @@ void RxBits()
 
         default:
             log_error("RX sync state machine got invalid state %d", SyncRxState);
+            SyncReset();
         break;
     }
 }
@@ -449,12 +466,12 @@ void SyncTimerCallback(void)
 */
 uint8_t SyncGetTxFree()
 {
-    uint16_t framesFree = (syncTxFifo.maxlen - syncTxFifo.size) / P25_LDU_FRAME_LENGTH_BYTES;
+    uint16_t framesFree = (syncTxFifo.maxlen - syncTxFifo.size) / P25_V24_LDU_FRAME_LENGTH_BYTES;
     // Reset buffers if we get low
     if (framesFree < 1)
     {
         log_error("TX buffer low: %d / %d bytes used, resetting buffer", syncTxFifo.size, syncTxFifo.maxlen);
-        VCPWriteDebug3("TX buffer low, clearing. Free/Total: ", syncTxFifo.size, syncTxFifo.maxlen);
+        VCPWriteDebug3("TX buffer low, clearing. Bytes Free/Total: ", syncTxFifo.size, syncTxFifo.maxlen);
         FifoClear(&syncTxFifo);
     }
     return framesFree;

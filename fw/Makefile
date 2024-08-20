@@ -23,7 +23,8 @@ TARGET = DVM-V24-stm32f103
 DEBUG = 1
 # optimization
 OPT = -Og
-
+# git commit hash
+GIT_VERSION := "$(shell git rev-parse --short HEAD)"
 
 #######################################
 # paths
@@ -157,7 +158,12 @@ endif
 
 
 # Generate dependency information
-CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
+CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)" -DGITHASH=\"$(GIT_VERSION)\"
+
+# Check for disabled watchdog
+ifdef disable_watchdog
+	CFLAGS += -DDISABLE_WATCHDOG
+endif
 
 
 #######################################

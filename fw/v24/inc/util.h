@@ -18,6 +18,12 @@ extern "C" {
 #include <string.h>
 #include "log.h"
 
+// this converts to string
+#define STR_(X) #X
+
+// this makes sure the argument is expanded before converting to string
+#define STR(X) STR_(X)
+
 #define STM32_UUID ((uint32_t *)0x1FFFF7E8)
 
 typedef struct {

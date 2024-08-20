@@ -43,6 +43,11 @@ extern "C" {
 #define TXCLK_HIGH()    SET_TXCLK(1)
 #define TXCLK_LOW()     SET_TXCLK(0)
 
+extern unsigned long rxValidFrames;
+extern unsigned long rxTotalFrames;
+extern unsigned long txTotalFrames;
+extern enum RxState SyncRxState;
+
 // State machine stuff
 enum RxState {
     SEARCH,
@@ -50,8 +55,7 @@ enum RxState {
 };
 
 void SyncStartup(TIM_HandleTypeDef *tim);
-void SyncResetRx();
-void SyncDrop();
+void SyncReset();
 void SyncTimerCallback(void);
 bool SyncAddTxByte(const uint8_t byte);
 bool SyncAddTxBytes(const uint8_t *bytes, int len);

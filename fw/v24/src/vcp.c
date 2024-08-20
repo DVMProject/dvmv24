@@ -18,20 +18,26 @@
 #include "string.h"
 #include "hdlc.h"
 
-const char HARDWARE[] = "DVM-V24 FW V" VERSION_STRING " (" DATE_STRING ")";
-
-uint8_t vcpRxMsg[VCP_RX_BUF_LEN];
-
+// Indicates if the host has opened the port
 extern bool USB_VCP_DTR;
 
-// VCP TX Fifo
-uint8_t vcpTxBuf[VCP_TX_BUF_LEN];
-FIFO_t vcpTxFifo = {
-    .buffer = vcpTxBuf,
-    .head = 0,
-    .tail = 0,
-    .maxlen = VCP_TX_BUF_LEN
-};
+// Flag indicating if we're in the process of receiveing a message
+bool vcpRxMsgInProgress = false;
+
+// Time we last received a byte
+uint32_t vcpRxLastByte = 0;
+
+// Flag that indicates we're expecting a double length message
+bool vcpRxDoubleLength = false;
+
+// Buffer for storing received message
+uint8_t vcpRxMsg[VCP_MAX_MSG_LENGTH_BYTES];
+
+// Expected total message length
+uint16_t vcpRxMsgLength = 0U;
+
+// Current message length
+uint16_t vcpRxMsgPosition = 0U;
 
 // VCP RX Fifo
 uint8_t vcpRxBuf[VCP_RX_BUF_LEN];
@@ -47,6 +53,7 @@ FIFO_t vcpRxFifo = {
 */
 void VCPRxITCallback(uint8_t* buf, uint32_t len)
 {
+    uint32_t start = HAL_GetTick();
     for (uint32_t i = 0; i < len; i++)
     {
         if (FifoPush(&vcpRxFifo, buf[i]))
@@ -56,6 +63,24 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len)
             FifoClear(&vcpRxFifo);
         }
     }
+    if (HAL_GetTick() - start > FUNC_TIMER_WARN)
+    {
+        log_warn("VCPRxITCallback took %u ms!", HAL_GetTick() - start);
+    }
+    #ifdef TRACE_VCP_RX
+    log_debug("Added %u bytes to VCP RX FIFO", len);
+    #endif
+}
+
+/**
+ * @brief reset counters and flags related to VCP RX routine
+*/
+void vcpRxReset()
+{
+    vcpRxMsgInProgress = false;
+    vcpRxDoubleLength = false;
+    vcpRxMsgLength = 0U;
+    vcpRxMsgPosition = 0U;
 }
 
 /**
@@ -63,174 +88,208 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len)
 */
 void VCPCallback()
 {
-    // RX Buffer First
-    // Wait for the start frame byte
-    uint8_t byte = 0;
-    // Try to read until either the buffer is empty or we get a start frame
-    while (!FifoPop(&vcpRxFifo, &byte) && byte != DVM_SHORT_FRAME_START && byte != DVM_LONG_FRAME_START) {
-        if (byte != 0) {
-            log_warn("Got invalid byte from USB VCP: %02X", byte);
-        }
+    /*
+    
+        The RX routine is basically copy-paste from dvmfirmware's Serialport::process() routine
+    
+    */
+
+    uint32_t start = HAL_GetTick();
+
+    if (vcpRxFifo.size > 0)
+    {
+        #ifdef DEBUG_VCP_RX
+        log_debug("VCP RX FIFO size: %d/%d", vcpRxFifo.size, vcpRxFifo.maxlen);
+        #endif
     }
     
-    // if we got the start frame, read the rest of the message
-    if (byte == DVM_SHORT_FRAME_START || byte == DVM_LONG_FRAME_START)
+    // Read data from the RX FIFO if available, until we process a full message, then break
+    while (vcpRxFifo.size > 0)
     {
+        // Turn activity LED on
         LED_USB(1);
 
-        uint8_t cmdOffset = 2;
-        
-        // Determine our length
-        uint16_t length;
-        // Short frame length is a single byte
-        if (byte == DVM_SHORT_FRAME_START)
+        // Read a byte
+        uint8_t c;
+        if (FifoPop(&vcpRxFifo, &c))
         {
-            uint8_t len;
-            // Pop the length byte
-            if (FifoPop(&vcpRxFifo, &len))
-            {
-                log_error("Reached end of VCP RX fifo before length byte was read");
-                return;
-            }
-            length = len;
+            log_warn("Tried to pop from empty FIFO, this shouldn't happen!");
+            break;
         }
-        // Long frame length is 2 bytes
+
+        vcpRxLastByte = HAL_GetTick();
+
+        // If we're waiting for the start of a message, see if we got a message start byte
+        if (vcpRxMsgPosition == 0U)
+        {
+            // Short frame length is a single byte
+            if (c == DVM_SHORT_FRAME_START)
+            {
+                #ifdef DEBUG_VCP_RX
+                log_debug("VCP RX: DVM_SHORT_FRAME_START");
+                #endif
+                // First byte of message set
+                vcpRxMsg[0U] = c;
+                // Increment our position pointer
+                vcpRxMsgPosition = 1U;
+                // Reset the length and double flag
+                vcpRxMsgLength = 0U;
+                vcpRxDoubleLength = false;
+                // We're receiving a message
+                vcpRxMsgInProgress = true;
+            }
+            // Long frame length is two bytes
+            else if (c == DVM_LONG_FRAME_START)
+            {
+                #ifdef DEBUG_VCP_RX
+                log_debug("VCP RX: DVM_LONG_FRAME_START");
+                #endif
+                vcpRxMsg[0U] = c;
+                vcpRxMsgPosition = 1U;
+                vcpRxMsgLength = 0U;
+                vcpRxDoubleLength = true;
+                // We're receiving a message
+                vcpRxMsgInProgress = true;
+            }
+            // Anything else is ignored and we reset
+            else
+            {
+                log_warn("Got invalid byte from VCP: %02X", c);
+                vcpRxReset();
+            }
+        }
+
+        // Receive length next
+        else if (vcpRxMsgPosition == 1U)
+        {
+            // Handle double length
+            if (vcpRxDoubleLength)
+            {
+                vcpRxMsg[vcpRxMsgPosition] = c;
+                vcpRxMsgLength = ((c & 0xFFU) << 8);
+            }
+            // Handle normal length
+            else
+            {
+                vcpRxMsgLength = vcpRxMsg[vcpRxMsgPosition] = c;
+                #ifdef DEBUG_VCP_RX
+                log_debug("VCP RX: Short message length: %d", vcpRxMsgLength);
+                #endif
+            }
+            // Increment position
+            vcpRxMsgPosition = 2U;
+        }
+
+        // Recieve second length byte if double length
+        else if (vcpRxMsgPosition == 2U && vcpRxDoubleLength)
+        {
+            vcpRxMsg[vcpRxMsgPosition] = c;
+            vcpRxMsgLength = (vcpRxMsgLength + (c & 0xFFU));
+            vcpRxMsgPosition = 3U;
+            #ifdef DEBUG_VCP_RX
+            log_debug("VCP RX: Double message length: %d", vcpRxMsgLength);
+            #endif
+        }
+
+        // Handle everything else
         else
         {
-            uint8_t len[2];
-            if (FifoPop(&vcpRxFifo, &len[0]))
+            // Make sure message length is valid
+            if (vcpRxMsgLength > VCP_MAX_MSG_LENGTH_BYTES)
             {
-                log_error("Reached end of VCP RX fifo before first length byte was read");
-                return;
+                log_error("Message length %d is longer than supported!", VCP_MAX_MSG_LENGTH_BYTES);
+                vcpRxReset();
             }
-            if (FifoPop(&vcpRxFifo, &len[1]))
+            // Add any other bytes to the buffer
+            vcpRxMsg[vcpRxMsgPosition] = c;
+            vcpRxMsgPosition++;
+
+            // Process message if we've hit our length
+            if (vcpRxMsgPosition == vcpRxMsgLength)
             {
-                log_error("Reached end of VCP RX fifo before second length byte was read");
-                return;
+                // This tells us where the command byte is
+                uint8_t offset = 2U;
+                if (vcpRxDoubleLength)
+                {
+                    offset = 3U;
+                }
+
+                #ifdef DEBUG_VCP_RX
+                log_debug("VCP RX: Got DVM message, cmd: $%02X", vcpRxMsg[offset]);
+                #endif
+
+                // Process command
+                switch (vcpRxMsg[offset])
+                {
+                    // Send P25 data as a UI frame
+                    case CMD_P25_DATA:
+                        // Process the UI frame
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Sending UI frame of length %d via HDLC", vcpRxMsgLength - offset - 2U);
+                        #endif
+                        #ifdef TRACE_VCP
+                        uint8_t hexStrBuf[(vcpRxMsgLength - offset - 2U)*4U];
+                        HexArrayToStr((char*)hexStrBuf, &vcpRxMsg[offset + 2U], vcpRxMsgLength - offset - 2U);
+                        log_trace("P25 Frame: %s", hexStrBuf);
+                        #endif
+                        // Send the UI, ignoring the first 0x00 byte
+                        HDLCSendUI(vcpRxMsg + offset + 2, vcpRxMsgLength - offset - 2);
+                    break;
+                    // Reply to version request
+                    case CMD_GET_VERSION:
+                        sendVersion();
+                    break;
+                    // Reply to status request
+                    case CMD_GET_STATUS:
+                        sendStatus();
+                    break;
+                    // Ignore mode set command
+                    case CMD_SET_MODE:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Ignoring CMD_SET_MODE, always in P25 mode");
+                        #endif
+                    break;
+                    case CMD_P25_CLEAR:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Ignoring CMD_P25_CLEAR, not implemented yet");
+                        #endif
+                        // TODO: this
+                        //log_info("Clearing and resetting synchronous serial");
+                        //SyncReset();
+                    break;
+                    case CMD_CAL_DATA:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Ignoring CMD_CAL_DATA and sending ACK");
+                        #endif
+                        VCPWriteAck(CMD_CAL_DATA);
+                    break;
+                    // Default handler
+                    default:
+                        log_warn("VCP RX: Unhandled DVM command %02X", vcpRxMsg[offset]);
+                    break;
+                }
+
+                // Reset
+                vcpRxReset();
+
+                #ifdef DEBUG_VCP_RX
+                log_debug("VCP RX msg done!");
+                /*if (vcpRxFifo.size > 0)
+                {
+                    log_debug("Remaining VCP RX FIFO size: %d/%d", vcpRxFifo.size, vcpRxFifo.maxlen);
+                }*/
+                #endif
             }
-            // Calculate length
-            length = ((len[0] & 0xFF) << 8) + (len[1] & 0xFF);
-            // Update command byte offset
-            cmdOffset = 3;
         }
 
-        // Data length is total length minus start and length byte(s)
-        uint16_t dataLength = length - cmdOffset;
-
-        // Allocate space for the data
-        uint8_t data[length];
-        memset(data, 0x00, length);
-        
-        // Pre-populate
-        if (byte == DVM_SHORT_FRAME_START)
-        {
-            data[0] = DVM_SHORT_FRAME_START;
-            data[1] = length & 0xFF;
-        } else {
-            data[0] = DVM_LONG_FRAME_START;
-            data[1] = (length >> 8) & 0xFF;
-            data[2] = length & 0xFF;
-        }
-        
-        // Get data
-        for (int i = 0; i < dataLength; i++)
-        {
-            // If we run out of fifo before the end of the message, return
-            if (FifoPop(&vcpRxFifo, &data[i + cmdOffset]))
-            {
-                log_error("Reached end of VCP RX fifo before message was complete, expected %d and got %d", dataLength, i);
-                return;
-            }
-        }
-
-        /*#ifdef TRACE_VCP
-        log_debug("Received DVM message of length %d", length);
-        uint8_t hexStrBuf[length*4];
-        HexArrayToStr((char*)hexStrBuf, &data, length);
-        log_trace("VCP RX Message: %s", hexStrBuf);
-        #endif*/
-
-        // Get the command which should be next
-        uint8_t command = data[cmdOffset];
-        
-        // Switch on the command
-        if (command == CMD_P25_DATA)
-        {
-            // Process the UI frame
-            #ifdef DEBUG_VCP
-            log_debug("Sending UI frame of length %d via HDLC", length - 4);
-            #endif
-            #ifdef TRACE_VCP
-            uint8_t hexStrBuf[(length - 4)*4];
-            HexArrayToStr((char*)hexStrBuf, &vcpRxMsg[4], length - 4);
-            log_trace("P25 Frame: %s", hexStrBuf);
-            #endif
-            // Send the UI, ignoring the first 0x00 byte
-            HDLCSendUI(data + cmdOffset + 2, length - cmdOffset - 2);
-        }
-        else if (command == CMD_GET_VERSION)
-        {
-            sendVersion();
-        }
-        else if (command == CMD_GET_STATUS)
-        {
-            sendStatus();
-        }
-        else if (command == CMD_SET_MODE)
-        {
-            #ifdef DEBUG_VCP
-            log_debug("Ignoring CMD_SET_MODE, always in P25 mode");
-            #endif
-        }
-        else if (command == CMD_P25_CLEAR)
-        {
-            // TODO: this
-            #ifdef DEBUG_VCP
-            log_debug("Ignoring CMD_P25_CLEAR, not yet implemented");
-            #endif
-        }
-        else
-        {
-            log_warn("Unhandled DVM command %02X", command);
-        }
+        // turn activity LED off
         LED_USB(0);
     }
 
-    // TX next, similar but we don't care about the command
-    // Buffer for TX message
-    uint8_t txBuf[VCP_TX_BUF_LEN];
-    // Wait for the start frame byte
-    byte = 0;
-    // Try to read until either the buffer is empty or we get a start frame
-    while (!FifoPop(&vcpTxFifo, &byte) && (byte != DVM_SHORT_FRAME_START)) {}
-    
-    // if we got the start frame, read the rest of the message
-    if (byte == DVM_SHORT_FRAME_START)
+    // Check elapsed time
+    if (HAL_GetTick() - start > FUNC_TIMER_WARN)
     {
-        LED_USB(1);
-        // Put start byte at index 0
-        txBuf[0] = byte;
-        // Get the length which should be the next byte
-        uint8_t length;
-        if (FifoPop(&vcpTxFifo, &length))
-        {
-            log_error("Reached end of VCP TX fifo before length byte was read");
-            return;
-        }
-        // Put length byte in position 2
-        txBuf[1] = length;
-        // Write the rest of the bytes to the buffer
-        for (uint16_t i = 2; i < length; i++)
-        {
-            if (FifoPop(&vcpTxFifo, &txBuf[i]))
-            {
-                log_error("Reached end of VCP TX fifo before entire message was read");
-                return;
-            }
-        }
-        // Send
-        CDC_Transmit_FS(txBuf, length);
-        LED_USB(0);
+        log_warn("VCPCallback took %u ms!", HAL_GetTick() - start);
     }
 }
 
@@ -243,17 +302,72 @@ void VCPCallback()
  * @return true on success, false on failure
 */
 bool VCPWrite(uint8_t *data, uint16_t len)
-{
-    for (int i = 0; i < len; i++)
+{    
+    // Return false if the port isn't open
+    if (!USB_VCP_DTR)
     {
-        if (FifoPush(&vcpTxFifo, data[i]))
+        log_warn("USB VCP not open, dropping message");
+        return false;
+    }
+
+    uint32_t start = HAL_GetTick();
+
+    // Directly write to the VCP
+    bool sent = false;
+    uint8_t attempts = USB_TX_RETRIES;
+    while (attempts > 0)
+    {
+        // Break if USB port is closed
+        if (!USB_VCP_DTR)
         {
-            log_error("VCP TX FIFO full! Clearing.");
-            FifoClear(&vcpTxFifo);
+            log_error("USB VCP disconnected, dropping message");
             return false;
         }
+        // Try to send
+        LED_USB(1);
+        uint8_t rtn = CDC_Transmit_FS(data, len);
+        attempts--;
+        LED_USB(0);
+        // Check for success
+        if (rtn == USBD_OK)
+        {
+            sent = true;
+            break;
+        }
+        else
+        {
+            log_warn("USB TX returned %d, retrying %d/%d", rtn, attempts, USB_TX_RETRIES);
+        }
     }
-    return true;
+    if (!sent)
+    {
+        log_error("Failed to write to USB port");
+    }
+
+    // Check elapsed time
+    if (HAL_GetTick() - start > FUNC_TIMER_WARN)
+    {
+        log_warn("VCPWrite took %u ms!", HAL_GetTick() - start);
+    }
+
+    return sent;
+}
+
+/**
+ * @brief Acknowledge a command
+ * 
+ * @param cmd command to ack
+*/
+bool VCPWriteAck(uint8_t cmd)
+{
+    uint8_t buffer[4U];
+
+    buffer[0U] = DVM_SHORT_FRAME_START;
+    buffer[1U] = 4U;
+    buffer[2U] = CMD_ACK;
+    buffer[3U] = cmd;
+
+    return VCPWrite(buffer, 4U);
 }
 
 /**
@@ -275,7 +389,7 @@ bool VCPWriteP25Frame(const uint8_t *data, uint16_t len)
 
     memcpy(buffer + 4, data, len);
 
-    #ifdef DEBUG_VCP
+    #ifdef DEBUG_VCP_TX
     log_debug("Writing P25 frame of length %d to VCP", len);
     #endif
     #ifdef TRACE_VCP
@@ -308,15 +422,15 @@ void sendVersion()
 
     // HW description
     uint8_t count = 21;
-    for (uint8_t i = 0U; i < sizeof(HARDWARE); i++, count++)
-        reply[count] = HARDWARE[i];
+    for (uint8_t i = 0U; i < sizeof(HARDWARE_STRING); i++, count++)
+        reply[count] = HARDWARE_STRING[i];
 
     // Total length
     reply[1U] = count;
 
     VCPWrite(reply, count);
 
-    #ifdef DEBUG_VCP
+    #ifdef DEBUG_VCP_TX
     log_info("Sent DVM version information");
     #endif
 }
@@ -337,16 +451,38 @@ void sendStatus()
     // Mode (always P25 mode)
     reply[3U] = 0x08U;
 
-    // State (always p25)
+    // State (always p25) TODO: dynamically report status of HDLC sync state here?
     reply[4U] = 2U;
 
-    // P25 tx buffer space
-    reply[10U] = SyncGetTxFree();
+    // Calculate free space in the VCP RX FIFO
+    #ifdef STATUS_SPACE_BLOCKS
+    // Flag if we're reporting in 16-byte blocks
+    reply[3U] |= 0x80U;
+    uint8_t framesFree = (vcpRxFifo.maxlen - vcpRxFifo.size) / 16U;
+    #else
+    uint8_t framesFree = (vcpRxFifo.maxlen - vcpRxFifo.size) / P25_V24_LDU_FRAME_LENGTH_BYTES;  
+    #endif
+    
+    // Reset buffers if we get low
+    #ifdef STATUS_SPACE_BLOCKS
+    if (framesFree < 16U)
+    #else
+    if (framesFree < 1U)
+    #endif
+    {
+        log_error("TX buffer low: %d / %d bytes used, resetting buffer", vcpRxFifo.size, vcpRxFifo.maxlen);
+        VCPWriteDebug3("TX buffer low, clearing. Bytes Free/Total: ", vcpRxFifo.size, vcpRxFifo.maxlen);
+        FifoClear(&vcpRxFifo);
+    }
+
+    // Report free space in the VCP buffer (since that's the main one we care about)
+    //reply[10U] = SyncGetTxFree();
+    reply[10U] = framesFree;
 
     VCPWrite(reply, 15U);
 
     /*#ifdef TRACE_VCP
-    log_info("Sent DVM status information");
+    log_trace("Sent DVM status information");
     #endif*/
 }
 
