@@ -278,6 +278,8 @@ void RxMessageCallback()
             // If we fail to parse the message, drop sync
             if (HDLCParseMsg(rxCurMsg, rxCurPos)) // minus 1 to remove the trailing flag (TODO: make it smarter)
             {
+                log_error("Failed to parse RX HDLC message");
+                VCPWriteDebug1("Failed to parse RX HDLC message");
                 SyncReset();
             }
         }
@@ -340,7 +342,8 @@ void RxBits()
             // If we've received 6 1s and the next bit is also a 1, that can't happen normally and we should drop sync
             else if (rxOnesCounter == 6 && rxd == 1)
             {
-                log_error("Received 7 consecutive 1s, this is bad, dropping sync!");
+                log_error("Received 7 consecutive 1s, this is bad.");
+                VCPWriteDebug1("Received 7 consecutive 1s, this is bad.");
                 SyncReset();
             }
             else
@@ -421,7 +424,8 @@ void RxBits()
                 }
                 else if (rxBitCounter > 8)
                 {
-                    log_error("RX bit counter exceeded, dropping sync");
+                    log_error("RX bit counter exceeded");
+                    VCPWriteDebug1("RX bit counter exceeded");
                     SyncReset();
                 }
             }
@@ -430,6 +434,7 @@ void RxBits()
 
         default:
             log_error("RX sync state machine got invalid state %d", SyncRxState);
+            VCPWriteDebug2("RX sync state machine got invalid state", SyncRxState);
             SyncReset();
         break;
     }
