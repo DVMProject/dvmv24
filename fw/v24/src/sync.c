@@ -36,9 +36,9 @@ FIFO_t syncTxFifo = {
 };
 // Current byte to transmit
 uint8_t syncTxByte = 0;
-uint8_t syncTxBytePos = 0;
-uint8_t syncLastTxByte = 0;
-bool syncTxFlag = false;
+volatile uint8_t syncTxBytePos = 0;
+volatile uint8_t syncLastTxByte = 0;
+volatile bool syncTxFlag = false;
 
 // RX fifo buffer
 uint8_t syncRxBuf[SYNC_RX_BUF_LEN];
@@ -49,20 +49,20 @@ FIFO_t syncRxFifo = {
     .maxlen = SYNC_RX_BUF_LEN
 };
 // Current byte being received
-uint8_t rxCurrentByte = 0;
-uint8_t rxBitCounter = 0;
-uint8_t byteStuffed = 255;
+volatile uint8_t rxCurrentByte = 0;
+volatile uint8_t rxBitCounter = 0;
+volatile uint8_t byteStuffed = 255;
 
 // Status variables
-enum RxState SyncRxState = SEARCH;
+volatile enum RxState SyncRxState = SEARCH;
 unsigned int SyncBytesReceived = 0;
 
 // For detecting RX bit stuffing
-uint8_t rxOnesCounter = 0;
+volatile uint8_t rxOnesCounter = 0;
 
 // For TX bit stuffing
-uint8_t txOnesCounter = 0;
-uint8_t txLastBit = 0;
+volatile uint8_t txOnesCounter = 0;
+volatile uint8_t txLastBit = 0;
 
 volatile bool rxMsgInProgress = false;
 
@@ -71,7 +71,7 @@ uint16_t rxCurPos = 0;
 bool rxMsgStarted = false;
 bool rxMsgComplete = false;
 
-unsigned long syncRxTimer = 50; // timer for delay after sync reset/drop/startup
+volatile unsigned long syncRxTimer = 50; // timer for delay after sync reset/drop/startup
 
 /**
  * @brief Starts the timer interrupt handler
@@ -442,7 +442,7 @@ void RxBits()
 }
 
 /**
- * @brief Callback for the 9600 baud timer (actually runs at X2 speed), clocks data in & out
+ * @brief Callback for the 9600 baud timer interrupt (actually runs at X2 speed), clocks data in & out
 */
 void SyncTimerCallback(void)
 {

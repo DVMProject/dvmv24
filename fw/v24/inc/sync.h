@@ -46,7 +46,7 @@ extern "C" {
 extern unsigned long rxValidFrames;
 extern unsigned long rxTotalFrames;
 extern unsigned long txTotalFrames;
-extern enum RxState SyncRxState;
+extern volatile enum RxState SyncRxState;
 
 // State machine stuff
 enum RxState {
