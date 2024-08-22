@@ -237,7 +237,7 @@ void VCPRxCallback()
                         log_debug("Sending UI frame of length %d via HDLC", vcpRxMsgLength - offset - 2U);
                         #endif
                         #ifdef TRACE_VCP
-                        uint8_t hexStrBuf[(vcpRxMsgLength - offset - 2U)*4U];
+                        uint8_t hexStrBuf[VCP_MAX_MSG_LENGTH_BYTES * 4U];
                         HexArrayToStr((char*)hexStrBuf, &vcpRxMsg[offset + 2U], vcpRxMsgLength - offset - 2U);
                         log_trace("P25 Frame: %s", hexStrBuf);
                         #endif
@@ -428,7 +428,7 @@ bool VCPWriteAck(uint8_t cmd)
 bool VCPWriteP25Frame(const uint8_t *data, uint16_t len)
 {
     // Start byte, length byte, cmd byte, and a 0x00 pad to maintain dvm compliance
-    uint8_t buffer[len + 4];
+    uint8_t buffer[VCP_MAX_MSG_LENGTH_BYTES];
     buffer[0] = DVM_SHORT_FRAME_START;
     buffer[1] = (uint8_t)len + 4;
     buffer[2] = CMD_P25_DATA;
@@ -440,7 +440,7 @@ bool VCPWriteP25Frame(const uint8_t *data, uint16_t len)
     log_debug("Writing P25 frame of length %d to VCP", len);
     #endif
     #ifdef TRACE_VCP
-    uint8_t hexStrBuf[(len+3)*4];
+    uint8_t hexStrBuf[VCP_MAX_MSG_LENGTH_BYTES * 4];
     printHexArray((char*)hexStrBuf, buffer, len+3);
     log_trace("Sending %s", hexStrBuf);
     #endif
@@ -469,7 +469,7 @@ void sendVersion()
 
     // HW description
     uint8_t count = 21;
-    for (uint8_t i = 0U; i < sizeof(HARDWARE_STRING); i++, count++)
+    for (uint8_t i = 0U; i < (uint8_t)sizeof(HARDWARE_STRING); i++, count++)
         reply[count] = HARDWARE_STRING[i];
 
     // Total length

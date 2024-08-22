@@ -22,6 +22,9 @@ extern "C" {
 
 #define CRC16_CCITT_INIT_VAL 0xFFFF
 
+/* Max size of an HDLC message (255 for now since I haven't seen longer ones yet) */
+#define HDLC_MAX_FRAME_SIZE_BYTES   255U
+
 /* Control Field Bytes */
 #define HDLC_CTRL_RR    0x01    // Receive Ready
 #define HDLC_CTRL_UI    0x03    // Unnumbered Information

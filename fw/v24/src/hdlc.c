@@ -134,13 +134,13 @@ void hdlcEncodeAndSendFrame(const uint8_t *data, const uint8_t len)
     // Calculate FCS of message
     uint16_t fcs = crc16(data, len);
     // Append
-    uint8_t frame[len + 2];
+    uint8_t frame[HDLC_MAX_FRAME_SIZE_BYTES];
     memcpy(&frame, data, len);
     frame[len] = low(fcs);
     frame[len + 1] = high(fcs);
     // Trace
     #ifdef TRACE_HDLC
-    uint8_t hexStrBuf[(len + 2)*4];
+    uint8_t hexStrBuf[HDLC_MAX_FRAME_SIZE_BYTES * 4];
     HexArrayToStr((char*)hexStrBuf, frame, len + 2);
     log_trace("Encoded HDLC: %s", hexStrBuf);
     #endif
@@ -148,7 +148,7 @@ void hdlcEncodeAndSendFrame(const uint8_t *data, const uint8_t len)
     uint8_t escapes = HDLCGetEscapesReq(frame, len + 2);
     if (escapes)
     {
-        uint8_t escFrame[len + 2 + escapes];
+        uint8_t escFrame[HDLC_MAX_FRAME_SIZE_BYTES];
         if (HDLCEscape(escFrame, frame, len + 2) != escapes)
         {
             log_error("Didn't escape the bytes we expected!");
@@ -212,7 +212,7 @@ void HDLCSendRR()
 void HDLCSendUI(uint8_t *msgData, uint8_t len)
 {
     // We need 2 extra bytes for address and control
-    uint8_t data[len + 2];
+    uint8_t data[HDLC_MAX_FRAME_SIZE_BYTES];
     data[0] = peerAddress;
     data[1] = HDLC_CTRL_UI;
     memcpy(&data[2], msgData, len);
@@ -355,7 +355,7 @@ uint8_t HDLCParseMsg(uint8_t* rawMsg, uint8_t rawLen)
 {
     // Debug print hex buffer
     #ifdef TRACE_HDLC
-    uint8_t hexStrBuf[rawLen * 4];
+    uint8_t hexStrBuf[HDLC_MAX_FRAME_SIZE_BYTES * 4];
     #endif
 
     // Incremenet total frames processed
@@ -366,7 +366,7 @@ uint8_t HDLCParseMsg(uint8_t* rawMsg, uint8_t rawLen)
     log_trace("Processing %d-byte HDLC message:%s", rawLen, hexStrBuf);
     #endif
     // Escape
-    uint8_t msg[rawLen];
+    uint8_t msg[HDLC_MAX_FRAME_SIZE_BYTES];
     uint8_t len = rawLen - HDLCUnescape(msg, rawMsg, rawLen);
     #ifdef TRACE_HDLC
     if (len != rawLen)
@@ -380,11 +380,11 @@ uint8_t HDLCParseMsg(uint8_t* rawMsg, uint8_t rawLen)
     uint8_t msg_ctrl = msg[1];
     // Data is bytes 2 to len-2 so buffer size is 4 less
     uint8_t data_len = len - 4;
-    uint8_t msg_data[data_len];
+    /*uint8_t msg_data[HDLC_MAX_FRAME_SIZE_BYTES];
     memset(msg_data, 0, data_len);
-    memcpy(msg_data, &msg[2], (data_len) * sizeof(uint8_t));
+    memcpy(msg_data, &msg[2], (data_len) * sizeof(uint8_t));*/
     #ifdef TRACE_HDLC
-    printHexArray((char*)hexStrBuf, msg_data, data_len);
+    printHexArray((char*)hexStrBuf, msg + 2U, data_len);
     log_trace("Msg data:%s", hexStrBuf);
     #endif
     // Calculate expected FCS by getting the entire message minus the FCS
@@ -433,7 +433,7 @@ uint8_t HDLCParseMsg(uint8_t* rawMsg, uint8_t rawLen)
             log_info("Got UI frame (len: %d)", data_len);
             hdlcLastRx = HAL_GetTick();
             // Write frame to VCP
-            VCPWriteP25Frame(msg_data, data_len);
+            VCPWriteP25Frame(msg + 2U, data_len);
             break;
         default:
             log_warn("Unhandled HDLC control type %02X", msg_ctrl);
