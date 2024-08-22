@@ -48,6 +48,15 @@ FIFO_t vcpRxFifo = {
     .maxlen = VCP_RX_BUF_LEN
 };
 
+// VCP RX FIFO
+uint8_t vcpTxBuf[VCP_TX_BUF_LEN];
+FIFO_t vcpTxFifo = {
+    .buffer = vcpTxBuf,
+    .head = 0,
+    .tail = 0,
+    .maxlen = VCP_TX_BUF_LEN
+};
+
 /**
  * @brief Called by the CDC_Receive_FS interrupt callback and fills the FIFO with the received bytes
 */
@@ -86,7 +95,7 @@ void vcpRxReset()
 /**
  * @brief Called during main loop to handle any data received from USB
 */
-void VCPCallback()
+void VCPRxCallback()
 {
     /*
     
@@ -279,6 +288,9 @@ void VCPCallback()
                     log_debug("Remaining VCP RX FIFO size: %d/%d", vcpRxFifo.size, vcpRxFifo.maxlen);
                 }*/
                 #endif
+
+                // Break from while loop so we can process TX
+                break;
             }
         }
 
@@ -290,6 +302,70 @@ void VCPCallback()
     if (HAL_GetTick() - start > FUNC_TIMER_WARN)
     {
         log_warn("VCPCallback took %u ms!", HAL_GetTick() - start);
+    }
+}
+
+void VCPTxCallback()
+{  
+    // Buffer for tx message
+    uint8_t txBuffer[VCP_MAX_MSG_LENGTH_BYTES];
+    uint16_t txPos = 0U;
+
+    // Write any bytes in the VCP TX queue
+    while (vcpTxFifo.size > 0)
+    {
+        // Read a byte
+        uint8_t c;
+        if (FifoPop(&vcpTxFifo, &c))
+        {
+            log_warn("Tried to pop from empty TX FIFO, this shouldn't happen!");
+            break;
+        }
+
+        // Add to the buffer
+        txBuffer[txPos] = c;
+        txPos++;
+    }
+
+    // Return if we didn't get any bytes
+    if (txPos == 0)
+    {
+        return;
+    }
+
+    // Directly write to the VCP
+    bool sent = false;
+    uint8_t attempts = USB_TX_RETRIES;
+    while (attempts > 0)
+    {
+        // Break if USB port is closed
+        if (!USB_VCP_DTR)
+        {
+            log_error("USB VCP disconnected, dropping message");
+            return;
+        }
+        // Try to send
+        LED_USB(1);
+        // We have to disable the USB interrupts when using CDC_Transmit_FS, apparently
+        HAL_NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
+        uint8_t rtn = CDC_Transmit_FS(txBuffer, txPos);
+        HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+        attempts--;
+        LED_USB(0);
+        // Check for success
+        if (rtn == USBD_OK)
+        {
+            sent = true;
+            break;
+        }
+        else
+        {
+            log_warn("USB TX returned %d, retrying %d/%d", rtn, attempts, USB_TX_RETRIES);
+        }
+    }
+    if (!sent)
+    {
+        log_error("Failed to write to USB port");
     }
 }
 
@@ -310,47 +386,18 @@ bool VCPWrite(uint8_t *data, uint16_t len)
         return false;
     }
 
-    uint32_t start = HAL_GetTick();
-
-    // Directly write to the VCP
-    bool sent = false;
-    uint8_t attempts = USB_TX_RETRIES;
-    while (attempts > 0)
+    // Add to TX fifo
+    for (int i = 0; i < len; i++)
     {
-        // Break if USB port is closed
-        if (!USB_VCP_DTR)
+        if (FifoPush(&vcpTxFifo, data[i]))
         {
-            log_error("USB VCP disconnected, dropping message");
+            log_error("VCP TX FIFO full! Clearing");
+            FifoClear(&vcpTxFifo);
             return false;
         }
-        // Try to send
-        LED_USB(1);
-        uint8_t rtn = CDC_Transmit_FS(data, len);
-        attempts--;
-        LED_USB(0);
-        // Check for success
-        if (rtn == USBD_OK)
-        {
-            sent = true;
-            break;
-        }
-        else
-        {
-            log_warn("USB TX returned %d, retrying %d/%d", rtn, attempts, USB_TX_RETRIES);
-        }
-    }
-    if (!sent)
-    {
-        log_error("Failed to write to USB port");
     }
 
-    // Check elapsed time
-    if (HAL_GetTick() - start > FUNC_TIMER_WARN)
-    {
-        log_warn("VCPWrite took %u ms!", HAL_GetTick() - start);
-    }
-
-    return sent;
+    return true;
 }
 
 /**
@@ -451,8 +498,16 @@ void sendStatus()
     // Mode (always P25 mode)
     reply[3U] = 0x08U;
 
-    // State (always p25) TODO: dynamically report status of HDLC sync state here?
-    reply[4U] = 2U;
+    // Report P25 mode only if HDLC peer is connected
+    if (HDLCPeerConnected)
+    {
+        reply[4U] = STATE_P25;
+    }
+    else
+    {
+        reply[4U] = STATE_IDLE;
+    }
+    
 
     // Calculate free space in the VCP RX FIFO
     #ifdef STATUS_SPACE_BLOCKS

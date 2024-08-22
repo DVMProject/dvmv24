@@ -50,8 +50,9 @@ extern enum RxState SyncRxState;
 
 // State machine stuff
 enum RxState {
-    SEARCH,
-    SYNCED
+    INIT = 0x00,
+    SEARCH = 0x01,
+    SYNCED = 0x02,
 };
 
 void SyncStartup(TIM_HandleTypeDef *tim);

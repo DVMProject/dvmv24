@@ -20,6 +20,7 @@ extern "C" {
 #include "sync.h"
 
 #define VCP_RX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 4)
+#define VCP_TX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 2)
 
 #define VCP_RX_TIMEOUT      100
 
@@ -48,8 +49,16 @@ enum DVM_COMMANDS {
     DVM_SHORT_FRAME_START   = 0xFE,
 };
 
+// DVM status states
+enum DVM_STATE {
+    STATE_IDLE = 0U,                    //! Idle
+    STATE_P25 = 2U,                     //! Project 25
+};
+
 void VCPRxITCallback(uint8_t* buf, uint32_t len);
-void VCPCallback();
+void VCPRxCallback();
+
+void VCPTxCallback();
 
 bool VCPWrite(uint8_t *data, uint16_t len);
 bool VCPWriteAck(uint8_t cmd);

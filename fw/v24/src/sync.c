@@ -435,6 +435,7 @@ void RxBits()
         default:
             log_error("RX sync state machine got invalid state %d", SyncRxState);
             VCPWriteDebug2("RX sync state machine got invalid state", SyncRxState);
+            SyncRxState = SEARCH;
             SyncReset();
         break;
     }

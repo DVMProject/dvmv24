@@ -166,7 +166,8 @@ int main(void)
         // Processing callbacks
         RxMessageCallback();
         HdlcCallback();
-        VCPCallback();
+        VCPRxCallback();
+        VCPTxCallback();
         SerialCallback(&huart2);
         // LED callbacks
         hbLED();
