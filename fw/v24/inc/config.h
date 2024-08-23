@@ -50,7 +50,7 @@ extern "C" {
 #define GITHASH "00000000"
 #endif
 
-#define VERSION_STRING      "DVM-V24 FW V2.0 (" GITHASH ")"
+#define VERSION_STRING      "DVM-V24 FW V2.1 (" GITHASH ")"
 #define BUILD_DATE_STRING   __DATE__ " " __TIME__
 #define HARDWARE_STRING     VERSION_STRING ", " BUILD_DATE_STRING
 
