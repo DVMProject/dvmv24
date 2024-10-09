@@ -22,7 +22,9 @@
 #include "iwdg.h"
 #include "tim.h"
 #include "usart.h"
+#ifdef DVM_V24_V1
 #include "usb_device.h"
+#endif
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -105,6 +107,7 @@ void linkLED()
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -130,10 +133,12 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_TIM2_Init();
-  MX_USB_DEVICE_Init();
-  #ifndef DISABLE_WATCHDOG
-  MX_IWDG_Init();
+  #ifdef DVM_V24_V2
+    MX_USART1_UART_Init();
+  #else
+    MX_USB_DEVICE_Init();
   #endif
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
     // Init stuff
     log_set_uart(&huart2);
@@ -142,7 +147,9 @@ int main(void)
 
     // Enumerate the VCP
     //log_info("Enumerating USB VCP");
+    #ifdef DVM_V24_V1
     VCPEnumerate();
+    #endif
 
     // Start sync serial handler
     log_info("Starting synchronous serial handler");

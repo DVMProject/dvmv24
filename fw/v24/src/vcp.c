@@ -10,13 +10,16 @@
 
 #include "leds.h"
 #include "stdio.h"
-#include "usbd_cdc_if.h"
 #include "log.h"
 #include "fifo.h"
 #include "util.h"
 #include "config.h"
 #include "string.h"
 #include "hdlc.h"
+
+#ifdef DVM_V24_V1
+#include "usbd_cdc_if.h"
+#endif
 
 // Indicates if the host has opened the port
 extern bool USB_VCP_DTR;

@@ -34,23 +34,31 @@ extern "C" {
 // Enable periodic status print
 //#define PERIODIC_STATUS
 
+// Sanity check
+#if !defined DVM_V24_V1 && !defined DVM_V24_V2
+#error "Invalid compile-time environment! Missing one of DVM_V24_V1 or DVM_V24_V2"
+#endif
+
 // Report buffer space in 16-byte blocks instead of LDUs
 #define STATUS_SPACE_BLOCKS
 
 // STM32 Interrupt Priorities
 #define NVIC_PRI_TIM2       3U
-#define NVIC_PRI_USB        4U
+#define NVIC_PRI_USB_USART1 4U
 #define NVIC_PRI_DMA        5U
-#define NVIC_PRI_USART      6U
+#define NVIC_PRI_USART2     6U
 
 // Time in ms above which critical routines will throw a warning
 #define FUNC_TIMER_WARN     10U
 
-#ifndef GITHASH
-#define GITHASH "00000000"
-#endif
+#define FW_MAJ  "2"
+#define FW_MIN  "2"
 
-#define VERSION_STRING      "DVM-V24 FW V2.1 (" GITHASH ")"
+#ifdef DVM_V24_V2
+#define VERSION_STRING      "DVM-V24-V2 FW V" FW_MAJ "." FW_MIN " (" GIT_HASH ")"
+#else
+#define VERSION_STRING      "DVM-V24 FW V" FW_MAJ "." FW_MIN " (" GIT_HASH ")"
+#endif
 #define BUILD_DATE_STRING   __DATE__ " " __TIME__
 #define HARDWARE_STRING     VERSION_STRING ", " BUILD_DATE_STRING
 
