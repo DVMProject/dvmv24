@@ -19,7 +19,7 @@ extern "C" {
 
 typedef struct {
     uint8_t * const buffer;
-    unsigned int size;
+    int size;
     int head;
     int tail;
     const int maxlen;

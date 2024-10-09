@@ -62,6 +62,8 @@ FIFO_t vcpTxFifo = {
     .maxlen = VCP_TX_BUF_LEN
 };
 
+#ifdef DVM_V24_V1
+
 /**
  * @brief Called by the CDC_Receive_FS interrupt callback and fills the FIFO with the received bytes
 */
@@ -87,6 +89,18 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len)
 }
 
 /**
+ * @brief Toggles the 1.5k resistor on D+ to renumerate the USB device
+*/
+void VCPEnumerate()
+{
+    USB_ENUM(0);
+    HAL_Delay(50);
+    USB_ENUM(1);
+}
+
+#else
+
+/**
  * @brief Interrupt handler for USART1 RX
  * 
  * @param huart uart to handle (should be usart1)
@@ -95,7 +109,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     uint32_t start = HAL_GetTick();
     // Add received bytes to the fifo
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < USART_RX_BUF_SIZE; i++)
     {
         if (FifoPush(&vcpRxFifo, usartRxBuffer[i]))
         {
@@ -108,11 +122,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         log_warn("HAL_UART_RxCpltCallback took %u ms!", HAL_GetTick() - start);
     }
     #ifdef TRACE_VCP_RX
-    log_debug("Added 8 bytes to VCP RX FIFO");
+    log_debug("Added %u bytes to VCP RX FIFO", USART_RX_BUF_SIZE);
     #endif
     // Call the interrupt again
-    HAL_UART_Receive_IT(huart, usartRxBuffer, 8);
+    HAL_UART_Receive_DMA(huart, usartRxBuffer, USART_RX_BUF_SIZE);
 }
+
+#endif
 
 /**
  * @brief reset counters and flags related to VCP RX routine
@@ -139,9 +155,9 @@ void VCPRxCallback()
     #ifndef DVM_V24_V1
     if (!usartRx)
     {
-        HAL_UART_Receive_IT(&huart1, usartRxBuffer, 8);
+        HAL_UART_Receive_DMA(&huart1, usartRxBuffer, USART_RX_BUF_SIZE);
         usartRx = true;
-        log_info("Started USART1 callback interrupt");
+        log_info("Started USART1 RX DMA transfer");
     }
     #endif
 
@@ -159,7 +175,11 @@ void VCPRxCallback()
     while (vcpRxFifo.size > 0)
     {
         // Turn activity LED on
+        #ifdef DVM_V24_V1
         LED_USB(1);
+        #else
+        LED_USB_RX(1);
+        #endif
 
         // Read a byte
         uint8_t c;
@@ -338,7 +358,11 @@ void VCPRxCallback()
         }
 
         // turn activity LED off
+        #ifdef DVM_V24_V1
         LED_USB(0);
+        #else
+        LED_USB_RX(0);
+        #endif
     }
 
     // Check elapsed time
@@ -414,8 +438,11 @@ void VCPTxCallback()
     }
     #else
 
+    // Turn LED on (turned off by TX cplt callback)
+    LED_USB_TX(1);
+
     // Write to USART1
-    HAL_UART_Transmit(&huart1, txBuffer, txPos, 100);
+    HAL_UART_Transmit_DMA(&huart1, txBuffer, txPos);
 
     #endif
 }
@@ -794,14 +821,4 @@ bool VCPWriteDebug4(const char *text, int16_t n1, int16_t n2, int16_t n3)
 
     // Return
     return ret;
-}
-
-/**
- * @brief Toggles the 1.5k resistor on D+ to renumerate the USB device
-*/
-void VCPEnumerate()
-{
-    USB_ENUM(0);
-    HAL_Delay(50);
-    USB_ENUM(1);
 }

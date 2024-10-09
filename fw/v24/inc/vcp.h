@@ -58,12 +58,16 @@ enum DVM_STATE {
 // Vars for V2 serial implementation
 #ifndef DVM_V24_V1
 bool usartRx = false;
-uint8_t usartRxBuffer[8] = {0};
+#define USART_RX_BUF_SIZE 4
+uint8_t usartRxBuffer[USART_RX_BUF_SIZE] = {0};
 #endif
 
+#ifdef DVM_V24_V1
+void VCPEnumerate();
 void VCPRxITCallback(uint8_t* buf, uint32_t len);
-void VCPRxCallback();
+#endif
 
+void VCPRxCallback();
 void VCPTxCallback();
 
 bool VCPWrite(uint8_t *data, uint16_t len);
@@ -78,7 +82,7 @@ bool VCPWriteDebug2(const char *text, int16_t n1);
 bool VCPWriteDebug3(const char *text, int16_t n1, int16_t n2);
 bool VCPWriteDebug4(const char *text, int16_t n1, int16_t n2, int16_t n3);
 
-void VCPEnumerate();
+
 
 #ifdef __cplusplus
 }

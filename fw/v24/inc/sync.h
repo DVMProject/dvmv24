@@ -46,7 +46,6 @@ extern "C" {
 extern unsigned long rxValidFrames;
 extern unsigned long rxTotalFrames;
 extern unsigned long txTotalFrames;
-extern volatile enum RxState SyncRxState;
 
 // State machine stuff
 enum RxState {
@@ -55,11 +54,13 @@ enum RxState {
     SYNCED = 0x02,
 };
 
+extern volatile enum RxState SyncRxState;
+
 void SyncStartup(TIM_HandleTypeDef *tim);
 void SyncReset();
 void SyncTimerCallback(void);
 bool SyncAddTxByte(const uint8_t byte);
-bool SyncAddTxBytes(const uint8_t *bytes, int len);
+bool SyncAddTxBytes(const uint8_t *bytes, unsigned int len);
 uint8_t SyncGetTxFree();
 void RxMessageCallback();
 uint16_t StuffByte(uint8_t byte);

@@ -74,6 +74,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+#ifdef DVM_V24_V1 // HB LED is only on DVM-V24 V1 boards
 void hbLED()
 {
     if (HAL_GetTick() - lastHb > 1000)
@@ -86,6 +88,7 @@ void hbLED()
         LED_HB(0);
     }
 }
+#endif
 
 void linkLED()
 {
@@ -177,7 +180,9 @@ int main(void)
         VCPTxCallback();
         SerialCallback(&huart2);
         // LED callbacks
+        #ifdef DVM_V24_V1
         hbLED();
+        #endif
         linkLED();
         // Refresh the IWDG watchdog
         #ifndef DISABLE_WATCHDOG
