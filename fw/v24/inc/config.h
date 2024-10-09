@@ -32,7 +32,9 @@ extern "C" {
 //#define TRACE_VCP
 
 // Enable periodic status print
-//#define PERIODIC_STATUS
+#define PERIODIC_STATUS
+// Interval in ms for the periodic status print
+#define PERIODIC_STATUS_INT 30000
 
 // Report buffer space in 16-byte blocks instead of LDUs
 #define STATUS_SPACE_BLOCKS

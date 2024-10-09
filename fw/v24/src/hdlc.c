@@ -88,10 +88,10 @@ void HdlcCallback()
     }
     
     // Periodic status print
-    if (HAL_GetTick() - lastStatus > STATUS_INTERVAL)
+    #ifdef PERIODIC_STATUS
+    if (HAL_GetTick() - lastStatus > PERIODIC_STATUS_INT)
     {
         lastStatus = HAL_GetTick();
-        #ifdef PERIODIC_STATUS
         uint32_t errFrames = rxTotalFrames - rxValidFrames;
         if (HDLCPeerConnected)
         {
@@ -108,8 +108,8 @@ void HdlcCallback()
             log_warn("HDLC frame sync lost");
             VCPWriteDebug1("HDLC frame sync lost");
         }
-        #endif
     }
+    #endif
 }
 
 void hdlcFrameSpace()

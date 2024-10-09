@@ -44,9 +44,6 @@ extern "C" {
 /* Interval between sending RRs in idle mode */
 #define RR_INTERVAL     5000
 
-/* Periodic Status Report Interval */
-#define STATUS_INTERVAL 30000
-
 #define FRAME_SPACING   2
 
 /* Macros for getting high/low bits of 16 bit numbers */
