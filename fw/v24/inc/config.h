@@ -34,11 +34,6 @@ extern "C" {
 // Enable periodic status print
 //#define PERIODIC_STATUS
 
-// Sanity check
-#if !defined DVM_V24_V1 && !defined DVM_V24_V2
-#error "Invalid compile-time environment! Missing one of DVM_V24_V1 or DVM_V24_V2"
-#endif
-
 // Report buffer space in 16-byte blocks instead of LDUs
 #define STATUS_SPACE_BLOCKS
 
@@ -54,10 +49,10 @@ extern "C" {
 #define FW_MAJ  "2"
 #define FW_MIN  "2"
 
-#ifdef DVM_V24_V2
-#define VERSION_STRING      "DVM-V24-V2 FW V" FW_MAJ "." FW_MIN " (" GIT_HASH ")"
+#ifdef DVM_V24_V1
+#define VERSION_STRING      "DVM-V24-V1 FW V" FW_MAJ "." FW_MIN " (" GIT_HASH ")"
 #else
-#define VERSION_STRING      "DVM-V24 FW V" FW_MAJ "." FW_MIN " (" GIT_HASH ")"
+#define VERSION_STRING      "DVM-V24-V2 FW V" FW_MAJ "." FW_MIN " (" GIT_HASH ")"
 #endif
 #define BUILD_DATE_STRING   __DATE__ " " __TIME__
 #define HARDWARE_STRING     VERSION_STRING ", " BUILD_DATE_STRING

@@ -107,7 +107,6 @@ target_include_directories(${CMAKE_TARGET_V2} PRIVATE
 )
 
 target_compile_definitions(${CMAKE_TARGET_V2} PRIVATE
-    DVM_V24_V2
     GIT_HASH="${GIT_VER_HASH}"
 )
 

@@ -55,6 +55,12 @@ enum DVM_STATE {
     STATE_P25 = 2U,                     //! Project 25
 };
 
+// Vars for V2 serial implementation
+#ifndef DVM_V24_V1
+bool usartRx = false;
+uint8_t usartRxBuffer[8] = {0};
+#endif
+
 void VCPRxITCallback(uint8_t* buf, uint32_t len);
 void VCPRxCallback();
 

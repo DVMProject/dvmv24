@@ -19,6 +19,8 @@
 
 #ifdef DVM_V24_V1
 #include "usbd_cdc_if.h"
+#else
+#include "usart.h"
 #endif
 
 // Indicates if the host has opened the port
@@ -85,6 +87,34 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len)
 }
 
 /**
+ * @brief Interrupt handler for USART1 RX
+ * 
+ * @param huart uart to handle (should be usart1)
+ */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    uint32_t start = HAL_GetTick();
+    // Add received bytes to the fifo
+    for (int i = 0; i < 8; i++)
+    {
+        if (FifoPush(&vcpRxFifo, usartRxBuffer[i]))
+        {
+            log_error("VCP RX FIFO full! Clearing buffer");
+            FifoClear(&vcpRxFifo);
+        }
+    }
+    if (HAL_GetTick() - start > FUNC_TIMER_WARN)
+    {
+        log_warn("HAL_UART_RxCpltCallback took %u ms!", HAL_GetTick() - start);
+    }
+    #ifdef TRACE_VCP_RX
+    log_debug("Added 8 bytes to VCP RX FIFO");
+    #endif
+    // Call the interrupt again
+    HAL_UART_Receive_IT(huart, usartRxBuffer, 8);
+}
+
+/**
  * @brief reset counters and flags related to VCP RX routine
 */
 void vcpRxReset()
@@ -105,6 +135,16 @@ void VCPRxCallback()
         The RX routine is basically copy-paste from dvmfirmware's Serialport::process() routine
     
     */
+
+    #ifndef DVM_V24_V1
+    if (!usartRx)
+    {
+        HAL_UART_Receive_IT(&huart1, usartRxBuffer, 8);
+        usartRx = true;
+        log_info("Started USART1 callback interrupt");
+    }
+    #endif
+
 
     uint32_t start = HAL_GetTick();
 
@@ -336,6 +376,8 @@ void VCPTxCallback()
         return;
     }
 
+    #ifdef DVM_V24_V1
+    
     // Directly write to the VCP
     bool sent = false;
     uint8_t attempts = USB_TX_RETRIES;
@@ -370,6 +412,12 @@ void VCPTxCallback()
     {
         log_error("Failed to write to USB port");
     }
+    #else
+
+    // Write to USART1
+    HAL_UART_Transmit(&huart1, txBuffer, txPos, 100);
+
+    #endif
 }
 
 /**

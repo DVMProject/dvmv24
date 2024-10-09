@@ -133,10 +133,10 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_TIM2_Init();
-  #ifdef DVM_V24_V2
-    MX_USART1_UART_Init();
-  #else
+  #ifdef DVM_V24_V1
     MX_USB_DEVICE_Init();
+  #else
+    MX_USART1_UART_Init();
   #endif
   MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
