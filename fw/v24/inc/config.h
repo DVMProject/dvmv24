@@ -38,10 +38,11 @@ extern "C" {
 #define STATUS_SPACE_BLOCKS
 
 // STM32 Interrupt Priorities
-#define NVIC_PRI_TIM2       3U
-#define NVIC_PRI_USB_USART1 4U
-#define NVIC_PRI_DMA        5U
-#define NVIC_PRI_USART2     6U
+#define NVIC_PRI_TIM2           2U
+#define NVIC_PRI_USART1_TX      3U
+#define NVIC_PRI_USART1_RX      4U
+#define NVIC_PRI_USART2_DMA     5U
+#define NVIC_PRI_USART2_INT     6U
 
 // Time in ms above which critical routines will throw a warning
 #define FUNC_TIMER_WARN     10U

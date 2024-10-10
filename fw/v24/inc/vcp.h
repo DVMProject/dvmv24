@@ -22,7 +22,8 @@ extern "C" {
 #define VCP_RX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 4)
 #define VCP_TX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 2)
 
-#define VCP_RX_TIMEOUT      100
+#define VCP_RX_TIMEOUT      10
+#define VCP_TX_TIMEOUT      10
 
 #define USB_ENUM(state)    HAL_GPIO_WritePin(USB_ENUM_GPIO_Port, USB_ENUM_Pin, state)
 
@@ -55,16 +56,11 @@ enum DVM_STATE {
     STATE_P25 = 2U,                     //! Project 25
 };
 
-// Vars for V2 serial implementation
-#ifndef DVM_V24_V1
-bool usartRx = false;
-#define USART_RX_BUF_SIZE 4
-uint8_t usartRxBuffer[USART_RX_BUF_SIZE] = {0};
-#endif
-
 #ifdef DVM_V24_V1
 void VCPEnumerate();
 void VCPRxITCallback(uint8_t* buf, uint32_t len);
+#else
+void VCPTxComplete();
 #endif
 
 void VCPRxCallback();

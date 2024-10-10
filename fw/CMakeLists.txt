@@ -92,6 +92,12 @@ target_link_libraries(${CMAKE_TARGET_V1}
     stm32cubemx
 )
 
+# Add .bin generation
+add_custom_command(TARGET ${CMAKE_TARGET_V1}
+    POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${CMAKE_TARGET_V1}> ${CMAKE_TARGET_V1}.bin
+)
+
 #
 #   V2 Target Setup
 #
@@ -113,4 +119,17 @@ target_compile_definitions(${CMAKE_TARGET_V2} PRIVATE
 # Add linked libraries
 target_link_libraries(${CMAKE_TARGET_V2}
     stm32cubemx
+)
+
+# Add .bin generation
+add_custom_command(TARGET ${CMAKE_TARGET_V2}
+    POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${CMAKE_TARGET_V2}> ${CMAKE_TARGET_V2}.bin
+)
+
+# Make sure bins are cleaned
+set_property(
+    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    APPEND
+    PROPERTY ADDITIONAL_CLEAN_FILES ${CMAKE_TARGET_V1}.bin ${CMAKE_TARGET_V2}.bin
 )

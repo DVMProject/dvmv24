@@ -12,6 +12,8 @@
 #include "stdbool.h"
 #include "config.h"
 #include "util.h"
+#include "leds.h"
+#include "vcp.h"
 
 uint8_t serialDMABuffer[SERIAL_BUFFER_SIZE];
 
@@ -70,6 +72,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
     {
         serialTxSending = false;
     }
+    #ifndef DVM_V24_V1
+    if (huart->Instance == USART1)
+    {
+        VCPTxComplete();
+    }
+    #endif
 }
 
 /**

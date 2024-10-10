@@ -21,6 +21,7 @@
 #include "usbd_cdc_if.h"
 #else
 #include "usart.h"
+#include "stdlib.h"
 #endif
 
 // Indicates if the host has opened the port
@@ -53,6 +54,11 @@ FIFO_t vcpRxFifo = {
     .maxlen = VCP_RX_BUF_LEN
 };
 
+// Buffer for tx message
+uint8_t txBuffer[VCP_MAX_MSG_LENGTH_BYTES];
+// TX message position/length
+uint16_t txPos = 0U;
+
 // VCP RX FIFO
 uint8_t vcpTxBuf[VCP_TX_BUF_LEN];
 FIFO_t vcpTxFifo = {
@@ -61,6 +67,15 @@ FIFO_t vcpTxFifo = {
     .tail = 0,
     .maxlen = VCP_TX_BUF_LEN
 };
+
+// Vars for V2 serial implementation
+#ifndef DVM_V24_V1
+bool usartRx = false;
+bool usartTx = false;
+unsigned long usartTxStart = 0;
+#define USART_RX_BUF_SIZE 4
+uint8_t usartRxBuffer[USART_RX_BUF_SIZE] = {0};
+#endif
 
 #ifdef DVM_V24_V1
 
@@ -126,6 +141,26 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     #endif
     // Call the interrupt again
     HAL_UART_Receive_DMA(huart, usartRxBuffer, USART_RX_BUF_SIZE);
+}
+
+/**
+ * @brief Called by the HAL_UART_TxCpltCallback in serial.c
+ */
+void VCPTxComplete()
+{
+    // Check for excessive delay
+    unsigned long txTime = HAL_GetTick() - usartTxStart;
+    if (txTime > VCP_TX_TIMEOUT)
+    {
+        log_error("VCP USART TX routine took %u ms!", txTime);
+    }
+    // Reset buffer & position
+    memset(txBuffer, 0x00U, VCP_MAX_MSG_LENGTH_BYTES);
+    txPos = 0;
+    // Reset LED
+    LED_USB_TX(0);
+    // Reset flag
+    usartTx = false;
 }
 
 #endif
@@ -372,11 +407,26 @@ void VCPRxCallback()
     }
 }
 
+/**
+ * @brief VCP TX callback for handling outgoing messages to the host
+ */
 void VCPTxCallback()
 {  
-    // Buffer for tx message
-    uint8_t txBuffer[VCP_MAX_MSG_LENGTH_BYTES];
-    uint16_t txPos = 0U;
+    #ifdef DVM_V24_V1
+    // On V1, since we use USB, we don't have a CPLT callback and clear these here
+    if (txPos > 0)
+    {
+        memset(txBuffer, 0x00U, VCP_MAX_MSG_LENGTH_BYTES);
+        txPos = 0;
+    }
+    #else
+    // On V2, everything is cleared by the complete callback so we just check if we're currently transmitting
+    if (usartTx)
+    {
+        return;
+    }
+    usartTxStart = HAL_GetTick();
+    #endif
 
     // Write any bytes in the VCP TX queue
     while (vcpTxFifo.size > 0)
@@ -441,8 +491,17 @@ void VCPTxCallback()
     // Turn LED on (turned off by TX cplt callback)
     LED_USB_TX(1);
 
+    // Set flag
+    usartTx = true;
+
     // Write to USART1
-    HAL_UART_Transmit_DMA(&huart1, txBuffer, txPos);
+    //HAL_UART_Transmit_DMA(&huart1, txBuffer, txPos);
+    HAL_UART_Transmit(&huart1, txBuffer, txPos, VCP_TX_TIMEOUT);
+    VCPTxComplete();
+
+    #ifdef DEBUG_VCP_TX
+    log_debug("Sent %u-byte message to VCP TX DMA", txPos);
+    #endif
 
     #endif
 }
@@ -458,11 +517,13 @@ void VCPTxCallback()
 bool VCPWrite(uint8_t *data, uint16_t len)
 {    
     // Return false if the port isn't open
+    #ifdef DVM_V24_V1
     if (!USB_VCP_DTR)
     {
         log_warn("USB VCP not open, dropping message");
         return false;
     }
+    #endif
 
     // Add to TX fifo
     for (int i = 0; i < len; i++)
