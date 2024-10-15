@@ -416,14 +416,14 @@ void VCPRxCallback()
                     }
                     break;
                     #endif
-                    
+                    // Reset MCU
                     case CMD_RESET_MCU:
                         ResetMCU();
                     break;
                     // Default handler
                     default:
                         log_warn("VCP RX: Unhandled DVM command %02X", vcpRxMsg[offset]);
-                        VCPWriteNak(vcpRxMsg[offset], RSN_NAK);
+                        VCPWriteNak(vcpRxMsg[offset], RSN_INVALID_REQUEST);
                     break;
                 }
 

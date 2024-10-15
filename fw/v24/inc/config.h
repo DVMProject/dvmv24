@@ -27,8 +27,8 @@ extern "C" {
 //#define TRACE_HDLC
 
 // Virtual Com Port (VCP) logging
-#define DEBUG_VCP_RX
-#define DEBUG_VCP_TX
+//#define DEBUG_VCP_RX
+//#define DEBUG_VCP_TX
 //#define TRACE_VCP
 
 // Enable periodic status print
