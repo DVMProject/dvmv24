@@ -16,6 +16,7 @@
 #include "config.h"
 #include "string.h"
 #include "hdlc.h"
+#include "main.h"
 
 #ifdef DVM_V24_V1
 #include "usbd_cdc_if.h"
@@ -73,7 +74,7 @@ FIFO_t vcpTxFifo = {
 bool usartRx = false;
 bool usartTx = false;
 unsigned long usartTxStart = 0;
-#define USART_RX_BUF_SIZE 4
+#define USART_RX_BUF_SIZE 1
 uint8_t usartRxBuffer[USART_RX_BUF_SIZE] = {0};
 #endif
 
@@ -201,7 +202,7 @@ void VCPRxCallback()
 
     if (vcpRxFifo.size > 0)
     {
-        #ifdef DEBUG_VCP_RX
+        #ifdef TRACE_VCP_RX
         log_debug("VCP RX FIFO size: %d/%d", vcpRxFifo.size, vcpRxFifo.maxlen);
         #endif
     }
@@ -330,6 +331,7 @@ void VCPRxCallback()
                 {
                     // Send P25 data as a UI frame
                     case CMD_P25_DATA:
+                    {
                         // Process the UI frame
                         #ifdef DEBUG_VCP_RX
                         log_debug("Sending UI frame of length %d via HDLC", vcpRxMsgLength - offset - 2U);
@@ -341,6 +343,7 @@ void VCPRxCallback()
                         #endif
                         // Send the UI, ignoring the first 0x00 byte
                         HDLCSendUI(vcpRxMsg + offset + 2, vcpRxMsgLength - offset - 2);
+                    }
                     break;
                     // Reply to version request
                     case CMD_GET_VERSION:
@@ -350,11 +353,25 @@ void VCPRxCallback()
                     case CMD_GET_STATUS:
                         sendStatus();
                     break;
+                    // Ignore config set command
+                    case CMD_SET_CONFIG:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Ignoring CMD_SET_CONFIG, no config to set");
+                        #endif
+                        VCPWriteAck(CMD_SET_CONFIG);
+                    break;
                     // Ignore mode set command
                     case CMD_SET_MODE:
                         #ifdef DEBUG_VCP_RX
                         log_debug("Ignoring CMD_SET_MODE, always in P25 mode");
                         #endif
+                    break;
+                    // Ignore RF params config
+                    case CMD_SET_RFPARAMS:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Ignoring CMD_SET_RFPARAMS, no RF params to set");
+                        #endif
+                        VCPWriteAck(CMD_SET_RFPARAMS);
                     break;
                     case CMD_P25_CLEAR:
                         #ifdef DEBUG_VCP_RX
@@ -370,9 +387,43 @@ void VCPRxCallback()
                         #endif
                         VCPWriteAck(CMD_CAL_DATA);
                     break;
+                    
+                    // Flash read/write is only supported on DVM-V24-V2
+                    #ifndef DVM_V24_V1
+                    // Flash Read
+                    case CMD_FLASH_READ:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Reading flash to serial port");
+                        #endif
+                        flashRead();
+                    break;
+                    // Flash Write
+                    case CMD_FLASH_WRITE:
+                    {
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Writing data to flash from serial port");
+                        #endif
+                        uint8_t err = flashWrite(vcpRxMsg + 3U, vcpRxMsgLength - 3U);
+                        if (err == RSN_OK)
+                        {
+                            VCPWriteAck(CMD_FLASH_WRITE);
+                        }
+                        else
+                        {
+                            log_error("Invalid flash data write: %u", err);
+                            VCPWriteNak(CMD_FLASH_WRITE, err);
+                        }
+                    }
+                    break;
+                    #endif
+                    
+                    case CMD_RESET_MCU:
+                        ResetMCU();
+                    break;
                     // Default handler
                     default:
                         log_warn("VCP RX: Unhandled DVM command %02X", vcpRxMsg[offset]);
+                        VCPWriteNak(vcpRxMsg[offset], RSN_NAK);
                     break;
                 }
 
@@ -398,6 +449,13 @@ void VCPRxCallback()
         #else
         LED_USB_RX(0);
         #endif
+    }
+
+    // Timeout and reset if we haven't received a full message
+    if ((vcpRxMsgPosition > 0) && (HAL_GetTick() - vcpRxLastByte > VCP_RX_TIMEOUT))
+    {
+        log_error("Timed out waiting for full VCP message, resetting");
+        vcpRxReset();
     }
 
     // Check elapsed time
@@ -497,11 +555,12 @@ void VCPTxCallback()
     // Write to USART1
     //HAL_UART_Transmit_DMA(&huart1, txBuffer, txPos);
     HAL_UART_Transmit(&huart1, txBuffer, txPos, VCP_TX_TIMEOUT);
-    VCPTxComplete();
 
     #ifdef DEBUG_VCP_TX
     log_debug("Sent %u-byte message to VCP TX DMA", txPos);
     #endif
+
+    VCPTxComplete();
 
     #endif
 }
@@ -554,6 +613,27 @@ bool VCPWriteAck(uint8_t cmd)
     buffer[3U] = cmd;
 
     return VCPWrite(buffer, 4U);
+}
+
+/**
+ * @brief Send a NACK back
+ * 
+ * @param cmd 
+ * @param err 
+ * @return true 
+ * @return false 
+ */
+bool VCPWriteNak(uint8_t cmd, uint8_t err)
+{
+    uint8_t buffer[5U];
+
+    buffer[0U] = DVM_SHORT_FRAME_START;
+    buffer[1U] = 5U;
+    buffer[2U] = CMD_NAK;
+    buffer[3U] = cmd;
+    buffer[4U] = err;
+
+    return VCPWrite(buffer, 5U);
 }
 
 /**
@@ -637,16 +717,14 @@ void sendStatus()
     // Mode (always P25 mode)
     reply[3U] = 0x08U;
 
-    // Report P25 mode only if HDLC peer is connected
+    // Report if V24 peer is connected or not
     if (HDLCPeerConnected)
     {
-        reply[4U] = STATE_P25;
+        reply[3U] |= 0x40U;
     }
-    else
-    {
-        reply[4U] = STATE_IDLE;
-    }
-    
+
+    // Report P25 mode always
+    reply[4U] = STATE_P25;
 
     // Calculate free space in the VCP RX FIFO
     #ifdef STATUS_SPACE_BLOCKS
@@ -679,6 +757,88 @@ void sendStatus()
     log_trace("Sent DVM status information");
     #endif*/
 }
+
+#ifndef DVM_V24_V1
+
+/**
+ * @brief Read out the STM32 config flash page and send to the serial port
+ * 
+ * @return uint8_t 
+ */
+void flashRead()
+{
+    uint8_t reply[249U];
+    reply[0U] = DVM_SHORT_FRAME_START;
+    reply[1U] = 249U;
+    reply[2U] = CMD_FLASH_READ;
+
+    memcpy(reply + 3U, (void*)STM32_CNF_PAGE, 246U);
+
+    VCPWrite(reply, 249U);
+}
+
+/**
+ * @brief Write to STM32 config flash page
+ * 
+ * @param data data to write
+ * @param length length of data to write
+ * @return uint8_t return reason
+ */
+uint8_t flashWrite(const uint8_t* data, uint8_t length)
+{
+    if (length > 249U)
+    {
+        log_error("Flash write too big! %u > %u", length, 249U);
+        return RSN_FLASH_WRITE_TOO_BIG;
+    }
+
+    // Unlock flash
+    HAL_FLASH_Unlock();
+
+    // Erase
+    static FLASH_EraseInitTypeDef EraseInitStruct;
+    uint32_t sectorError;
+    EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+    EraseInitStruct.PageAddress = STM32_CNF_PAGE_ADDR;
+    EraseInitStruct.NbPages     = 1;
+    HAL_StatusTypeDef status;
+    status = HAL_FLASHEx_Erase(&EraseInitStruct, &sectorError);
+    if (status != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        log_error("HAL_FLASHEx_Erase failed with code %u", status);
+        return RSN_FAILED_ERASE_FLASH;
+    }
+
+    // Compile bytes into words
+    uint32_t address = STM32_CNF_PAGE_ADDR;
+    uint8_t i = 0;
+    while (i < length)
+    {
+        uint32_t word = 
+            (uint32_t)(data[i + 3] << 24) +
+            (uint32_t)(data[i + 2] << 16) +
+            (uint32_t)(data[i + 1] << 8) +
+            (uint32_t)(data);
+
+        status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, word);
+        if (status != HAL_OK)
+        {
+            HAL_FLASH_Lock();
+            log_error("HAL_FLASH_Program failed to write address %08X with code %u", address, status);
+            return RSN_FAILED_WRITE_FLASH;
+        }
+        else
+        {
+            address += 4;
+            i += 4;
+        }
+    }
+    HAL_FLASH_Lock();
+    return RSN_OK;
+}
+
+#endif
 
 /**
  * @brief Write a debug message to the USB port, using the DVMHost modem format

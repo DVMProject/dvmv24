@@ -46,6 +46,10 @@ message("Git Hash:    " ${GIT_VER_HASH})
 project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
+# Remap __FILE__ directive to display filename only, not full path
+message("Remapping ${CMAKE_SOURCE_DIR}/ to /")
+add_definitions(-fmacro-prefix-map="${CMAKE_SOURCE_DIR}/=/")
+
 # Create executables
 add_executable(${CMAKE_TARGET_V1})
 add_executable(${CMAKE_TARGET_V2})

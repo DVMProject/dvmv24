@@ -27,8 +27,8 @@ extern "C" {
 //#define TRACE_HDLC
 
 // Virtual Com Port (VCP) logging
-//#define DEBUG_VCP_RX
-//#define DEBUG_VCP_TX
+#define DEBUG_VCP_RX
+#define DEBUG_VCP_TX
 //#define TRACE_VCP
 
 // Enable periodic status print
@@ -43,6 +43,11 @@ extern "C" {
 #define NVIC_PRI_USART1_RX      4U
 #define NVIC_PRI_USART2_DMA     5U
 #define NVIC_PRI_USART2_INT     6U
+
+// Flash Areas (shamelessly stolen from dvmfirmware-hs)
+#define STM32_CNF_PAGE_ADDR     (uint32_t)0x0800FC00
+#define STM32_CNF_PAGE          ((uint32_t *)0x0800FC00)
+#define STM32_CNF_PAGE_24       24U
 
 // Time in ms above which critical routines will throw a warning
 #define FUNC_TIMER_WARN     10U
