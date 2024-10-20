@@ -167,6 +167,23 @@ void VCPTxComplete()
 #endif
 
 /**
+ * @brief Clear the RX buffers related to the VCP RX routines
+ * 
+ */
+void vcpRxClearBuffer()
+{
+    // Clear FIFO
+    FifoClear(&vcpRxFifo);
+    #ifndef DVM_V24_V1
+    // Clear USART
+    for (int i = 0; i < USART_RX_BUF_SIZE; i++)
+    {
+        usartRxBuffer[i] = 0x00U;
+    }
+    #endif
+}
+
+/**
  * @brief reset counters and flags related to VCP RX routine
 */
 void vcpRxReset()
@@ -452,11 +469,12 @@ void VCPRxCallback()
     }
 
     // Timeout and reset if we haven't received a full message
-    /*if ((vcpRxMsgPosition > 0) && (HAL_GetTick() - vcpRxLastByte > VCP_RX_TIMEOUT))
+    if ((vcpRxMsgPosition > 0) && (HAL_GetTick() - vcpRxLastByte > VCP_RX_TIMEOUT))
     {
         log_error("Timed out waiting for full VCP message, resetting");
         vcpRxReset();
-    }*/
+        vcpRxClearBuffer();
+    }
 
     // Check elapsed time
     if (HAL_GetTick() - start > FUNC_TIMER_WARN)
