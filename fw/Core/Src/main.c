@@ -231,6 +231,7 @@ int main(void)
 
     // Done!
     log_info("Startup complete");
+    VCPWriteDebug1("Startup complete");
     SyncReset();
 
 // Warn that watchdog is disbaled
@@ -326,8 +327,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
  */
 void ResetMCU()
 {
-    log_warn("MCU is resetting!");
-    HAL_Delay(250);
+    //log_warn("MCU is resetting!");
+    //HAL_Delay(250);
     LED_ACT(0);
     LED_LINK(0);
 #ifdef DVM_V24_V1
