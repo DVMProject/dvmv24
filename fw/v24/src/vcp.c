@@ -452,11 +452,11 @@ void VCPRxCallback()
     }
 
     // Timeout and reset if we haven't received a full message
-    if ((vcpRxMsgPosition > 0) && (HAL_GetTick() - vcpRxLastByte > VCP_RX_TIMEOUT))
+    /*if ((vcpRxMsgPosition > 0) && (HAL_GetTick() - vcpRxLastByte > VCP_RX_TIMEOUT))
     {
         log_error("Timed out waiting for full VCP message, resetting");
         vcpRxReset();
-    }
+    }*/
 
     // Check elapsed time
     if (HAL_GetTick() - start > FUNC_TIMER_WARN)
