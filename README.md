@@ -9,6 +9,12 @@ DVM-V24 boards are available from the [W3AXL Online Store](https://store.w3axl.c
 
 Schematics for the board are also included in the `hw` directory to build your own adapters.
 
+### Hardware Revisions
+
+There are two hardware revisions, the original "V1" boards, and the newer "V2" boards. The V2 boards offload the USB->serial functionality to a dedicated CP2102 chip which alleviates some lockup/freezing issues that were encountered with the original V1 hardware.
+
+The two hardware revisions require different firmware binaries, but both can be built from the same repository and commands.
+
 ### The `CLKSEL` Jumper
 
 This jumper connects the serial clock line to the `RXCLK` pin. Currently this jumper must be in place for the V24 adapter to work properly. In the future, the board will support external clocking, but for now the firmware only supports generating clocks for both TX & RX.
@@ -19,7 +25,58 @@ Firmware is availble in this repo, under the `fw` directory. It's written in bar
 ### Building the latest firmware
 We recommend building the firmware for the DVM-V24 on a linux-based machine, since it's much easier to set up a working ARM toolchain.
 
-Once you have the ARM toolchain installed, simply running `make` will create binary & elf files in a `./build/` directory. These can then be flashed using the STLink using the `make flash` command.
+On debian machines, you will need to install the following packages to build the fw:
+
+```bash
+sudo apt install gcc-arm-none-eabi cmake
+```
+
+Once you have the everything installed, perform the following steps to prepare the build environment:
+
+```bash
+mkdir build
+cd build
+cmake ..
+```
+
+Finally, you can build firmware individually for the v1 or v2 boards, or build both binaries:
+
+```bash
+make dvm-v24-v1
+make dvm-v24-v2
+make # make with no options will build both v1 and v2 binaries
+```
+
+### Flashing the firmware
+
+#### Using STLink programmer
+
+You may use the SWD headers on the board to load firmware via an STLink programmer. This is required for the V1 boards, and on the V2 boards if the firmware becomes corrupted and USB loading no longer works.
+
+First make sure the stlink-tools are installed on your system:
+
+```bash
+sudo apt install stlink-tools
+```
+
+Then you can flash the board by using the following command
+```bash
+st-flash --reset write dvm-v24-xxx.bin 0x8000000
+```
+
+#### Using USB flashing
+
+DVMV24-V2 boards can be loaded using the ST serial bootloader, in the same way that DVM modems can. First, you must put the board into bootloader mode using `dvmhost` in calibration mode:
+
+```bash
+./dvmhost -c <config file.yml> --cal
+```
+
+Then, enter bootloader mode using the `!` command. DVMHost will exit, and at this point you can use the stm32flash command:
+
+```bash
+stm32flash -v -w ./dvm-v24-v2.bin -R /dev/ttyUSBx
+```
 
 ## Quick Start
 
