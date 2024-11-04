@@ -74,9 +74,32 @@ FIFO_t vcpTxFifo = {
 bool usartRx = false;
 bool usartTx = false;
 unsigned long usartTxStart = 0;
-#define USART_RX_BUF_SIZE 1
-uint8_t usartRxBuffer[USART_RX_BUF_SIZE] = {0};
+uint8_t usartRxBuffer = 0;
 #endif
+
+/**
+ * @brief Clear the RX buffers related to the VCP RX routines
+ * 
+ */
+void vcpRxClearBuffer()
+{
+    // Clear FIFO
+    FifoClear(&vcpRxFifo);
+    #ifndef DVM_V24_V1
+    usartRxBuffer = 0x00U;
+    #endif
+}
+
+/**
+ * @brief reset counters and flags related to VCP RX routine
+*/
+void vcpRxReset()
+{
+    vcpRxMsgInProgress = false;
+    vcpRxDoubleLength = false;
+    vcpRxMsgLength = 0U;
+    vcpRxMsgPosition = 0U;
+}
 
 #ifdef DVM_V24_V1
 
@@ -92,7 +115,7 @@ void VCPRxITCallback(uint8_t* buf, uint32_t len)
         {
             log_error("VCP RX FIFO full! Clearing buffer");
             // Clear
-            FifoClear(&vcpRxFifo);
+            vcpRxClearBuffer();
         }
     }
     if (HAL_GetTick() - start > FUNC_TIMER_WARN)
@@ -124,24 +147,32 @@ void VCPEnumerate()
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     uint32_t start = HAL_GetTick();
-    // Add received bytes to the fifo
-    for (int i = 0; i < USART_RX_BUF_SIZE; i++)
+    // Add received byte to the fifo
+    if (FifoPush(&vcpRxFifo, usartRxBuffer))
     {
-        if (FifoPush(&vcpRxFifo, usartRxBuffer[i]))
-        {
-            log_error("VCP RX FIFO full! Clearing buffer");
-            FifoClear(&vcpRxFifo);
-        }
+        log_error("VCP RX FIFO full! Clearing buffer");
+        FifoClear(&vcpRxFifo);
     }
+    // Check how long this took
     if (HAL_GetTick() - start > FUNC_TIMER_WARN)
     {
         log_warn("HAL_UART_RxCpltCallback took %u ms!", HAL_GetTick() - start);
     }
-    #ifdef TRACE_VCP_RX
-    log_debug("Added %u bytes to VCP RX FIFO", USART_RX_BUF_SIZE);
-    #endif
     // Call the interrupt again
-    HAL_UART_Receive_DMA(huart, usartRxBuffer, USART_RX_BUF_SIZE);
+    HAL_UART_Receive_IT(huart, &usartRxBuffer, 1);
+}
+
+/**
+ * @brief Handle errors during UART operation
+ * 
+ * @param huart 
+ */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    log_error("Got UART error: %02X", huart->ErrorCode);
+    VCPWriteDebug2("Got HAL UART error code ", huart->ErrorCode);
+    vcpRxReset();
+    vcpRxClearBuffer();
 }
 
 /**
@@ -154,6 +185,7 @@ void VCPTxComplete()
     if (txTime > VCP_TX_TIMEOUT)
     {
         log_error("VCP USART TX routine took %u ms!", txTime);
+        VCPWriteDebug1("VCP USART TX routine took > " STR(VCP_TX_TIMEOUT) "ms");
     }
     // Reset buffer & position
     memset(txBuffer, 0x00U, VCP_MAX_MSG_LENGTH_BYTES);
@@ -165,34 +197,6 @@ void VCPTxComplete()
 }
 
 #endif
-
-/**
- * @brief Clear the RX buffers related to the VCP RX routines
- * 
- */
-void vcpRxClearBuffer()
-{
-    // Clear FIFO
-    FifoClear(&vcpRxFifo);
-    #ifndef DVM_V24_V1
-    // Clear USART
-    for (int i = 0; i < USART_RX_BUF_SIZE; i++)
-    {
-        usartRxBuffer[i] = 0x00U;
-    }
-    #endif
-}
-
-/**
- * @brief reset counters and flags related to VCP RX routine
-*/
-void vcpRxReset()
-{
-    vcpRxMsgInProgress = false;
-    vcpRxDoubleLength = false;
-    vcpRxMsgLength = 0U;
-    vcpRxMsgPosition = 0U;
-}
 
 /**
  * @brief Called during main loop to handle any data received from USB
@@ -208,9 +212,9 @@ void VCPRxCallback()
     #ifndef DVM_V24_V1
     if (!usartRx)
     {
-        HAL_UART_Receive_DMA(&huart1, usartRxBuffer, USART_RX_BUF_SIZE);
+        HAL_UART_Receive_IT(&huart1, &usartRxBuffer, 1);
         usartRx = true;
-        log_info("Started USART1 RX DMA transfer");
+        log_info("Started USART1 RX IT transfer");
     }
     #endif
 
@@ -472,6 +476,7 @@ void VCPRxCallback()
     if ((vcpRxMsgPosition > 0) && (HAL_GetTick() - vcpRxLastByte > VCP_RX_TIMEOUT))
     {
         log_error("Timed out waiting for full VCP message, resetting");
+        VCPWriteDebug1("Timed out waiting for full VCP message, resetting");
         vcpRxReset();
         vcpRxClearBuffer();
     }
@@ -572,13 +577,14 @@ void VCPTxCallback()
 
     // Write to USART1
     //HAL_UART_Transmit_DMA(&huart1, txBuffer, txPos);
-    HAL_UART_Transmit(&huart1, txBuffer, txPos, VCP_TX_TIMEOUT);
+    //HAL_UART_Transmit(&huart1, txBuffer, txPos, VCP_TX_TIMEOUT);
+    HAL_UART_Transmit_IT(&huart1, txBuffer, txPos);
 
     #ifdef DEBUG_VCP_TX
     log_debug("Sent %u-byte message to VCP TX DMA", txPos);
     #endif
 
-    VCPTxComplete();
+    //VCPTxComplete();
 
     #endif
 }

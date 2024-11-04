@@ -22,8 +22,9 @@ extern "C" {
 #define VCP_RX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 4)
 #define VCP_TX_BUF_LEN      (P25_V24_LDU_FRAME_LENGTH_BYTES * 2)
 
-#define VCP_RX_TIMEOUT      150
-#define VCP_TX_TIMEOUT      150
+// a 255-byte RS232 mesasge should take around 25ms ideally, but it seems to sometimes take much longer for a full message to make its way through
+#define VCP_RX_TIMEOUT      100
+#define VCP_TX_TIMEOUT      100
 
 #define USB_ENUM(state)     HAL_GPIO_WritePin(USB_ENUM_GPIO_Port, USB_ENUM_Pin, state)
 

@@ -63,17 +63,20 @@ void SerialCallback(UART_HandleTypeDef *huart)
 */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-    uint16_t bytes = SerialFillDMA();
-    if (bytes > 0)
+    if (huart->Instance == USART2)
     {
-        HAL_UART_Transmit_DMA(huart, serialDMABuffer, bytes);
-    }
-    else
-    {
-        serialTxSending = false;
+        uint16_t bytes = SerialFillDMA();
+        if (bytes > 0)
+        {
+            HAL_UART_Transmit_DMA(huart, serialDMABuffer, bytes);
+        }
+        else
+        {
+            serialTxSending = false;
+        }
     }
     #ifndef DVM_V24_V1
-    if (huart->Instance == USART1)
+    else if (huart->Instance == USART1)
     {
         VCPTxComplete();
     }

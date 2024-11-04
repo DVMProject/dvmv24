@@ -54,11 +54,12 @@ extern "C" {
 
 #define FW_MAJ  "2"
 #define FW_MIN  "2"
+#define FW_REV  "0"
 
 #ifdef DVM_V24_V1
-#define VERSION_STRING      "DVM-V24-V1 FW V" FW_MAJ "." FW_MIN " (" GIT_HASH ")"
+#define VERSION_STRING      "DVM-V24-V1 FW V" FW_MAJ "." FW_MIN "." FW_REV " (" GIT_HASH ")"
 #else
-#define VERSION_STRING      "DVM-V24-V2 FW V" FW_MAJ "." FW_MIN " (" GIT_HASH ")"
+#define VERSION_STRING      "DVM-V24-V2 FW V" FW_MAJ "." FW_MIN "." FW_REV " (" GIT_HASH ")"
 #endif
 #define BUILD_DATE_STRING   __DATE__ " " __TIME__
 #define HARDWARE_STRING     VERSION_STRING ", " BUILD_DATE_STRING
