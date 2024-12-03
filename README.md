@@ -21,7 +21,7 @@ This jumper connects the serial clock line to the `RXCLK` pin. Currently this ju
 
 ### `UBT0` and `URST` Jumpers
 
-These jumpers are specific to the version 2 boards and enable the RTS and DTR signals of the serial chip to force the board into UART bootloader mode. This will allow for programming using `stm32flash` even without access to the software boot command in `dvmhost`. By default these jumpers are **not** connected and must be bridged with solder to enable RTS/DTR boot control.
+These jumpers are specific to the version 2 boards and enable the RTS and DTR signals of the serial chip to force the board into UART bootloader mode. This will allow for programming using `stm32flash` even without access to the software boot command in `dvmhost`. By default these jumpers are **not** connected and must be bridged with solder to enable RTS/DTR boot control. Note that with these jumpers shorted, the V24 board will reset when `dvmhost` connects.
 
 ## Firmware
 Firmware is availble in this repo, under the `fw` directory. It's written in bare C, generated from STM32CubeMX. You will need an STLink programmer in order to flash the boards with the latest version of software.
