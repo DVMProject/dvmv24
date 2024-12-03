@@ -46,9 +46,12 @@ cmake ..
 Finally, you can build firmware individually for the v1 or v2 boards, or build both binaries:
 
 ```bash
+# To build for V1 only:
 make dvm-v24-v1
+# or to build for V2:
 make dvm-v24-v2
-make # make with no options will build both v1 and v2 binaries
+# make with no options will build both v1 and v2 binaries
+make
 ```
 
 ### Flashing the firmware
