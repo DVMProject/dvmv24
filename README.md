@@ -88,7 +88,7 @@ stm32flash -v -w ./dvm-v24-v2.bin -R /dev/ttyUSBx
 If you have the `UBT0` and `URST` jumpers shorted, you can also flash the board using DTR & RTS in a single command as follows:
 
 ```bash
-stm32flash -v -w ./dvm-v24-v2.bin -i 'rts&-dtr:-rts&dtr' -R /dev/ttyUSBx
+stm32flash -v -w ./dvm-v24-v2.bin -i 'rts&-dtr:-rts&dtr' /dev/ttyUSBx
 ```
 
 ## Quick Start
