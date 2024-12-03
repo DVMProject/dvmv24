@@ -17,7 +17,11 @@ The two hardware revisions require different firmware binaries, but both can be 
 
 ### The `CLKSEL` Jumper
 
-This jumper connects the serial clock line to the `RXCLK` pin. Currently this jumper must be in place for the V24 adapter to work properly. In the future, the board will support external clocking, but for now the firmware only supports generating clocks for both TX & RX.
+This jumper connects the serial clock line to the `RXCLK` pin. Currently this jumper must be in place for the V24 adapter to work properly. Version 1 boards require a jumper to be in place, while version 2 boards have the solder jumper shorted by default. In the future, the boards may support external clocking, but for now the firmware only supports generating clocks for both TX & RX.
+
+### `UBT0` and `URST` Jumpers
+
+These jumpers are specific to the version 2 boards and enable the RTS and DTR signals of the serial chip to force the board into UART bootloader mode. This will allow for programming using `stm32flash` even without access to the software boot command in `dvmhost`. By default these jumpers are **not** connected and must be bridged with solder to enable RTS/DTR boot control.
 
 ## Firmware
 Firmware is availble in this repo, under the `fw` directory. It's written in bare C, generated from STM32CubeMX. You will need an STLink programmer in order to flash the boards with the latest version of software.
@@ -76,6 +80,12 @@ Then, enter bootloader mode using the `!` command. DVMHost will exit, and at thi
 
 ```bash
 stm32flash -v -w ./dvm-v24-v2.bin -R /dev/ttyUSBx
+```
+
+If you have the `UBT0` and `URST` jumpers shorted, you can also flash the board using DTR & RTS in a single command as follows:
+
+```bash
+stm32flash -v -w ./dvm-v24-v2.bin -i 'rts&-dtr:-rts&dtr' -R /dev/ttyUSBx
 ```
 
 ## Quick Start
