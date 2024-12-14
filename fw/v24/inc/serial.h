@@ -32,10 +32,10 @@ extern "C" {
 
 // External functions
 void SerialCallback(UART_HandleTypeDef *huart);
-void SerialWrite(UART_HandleTypeDef *huart, const char *data);
-void SerialWriteLn(UART_HandleTypeDef *huart, const char *data);
-void SerialClear(UART_HandleTypeDef *huart);
-void SerialStartup(UART_HandleTypeDef *huart);
+void SerialWrite(const char *data);
+void SerialWriteLn(const char *data);
+void SerialClear();
+void SerialStartup();
 
 #ifdef __cplusplus
 }

@@ -40,19 +40,29 @@ extern "C" {
 #define STATUS_SPACE_BLOCKS
 
 // STM32 Interrupt Priorities
-#define NVIC_PRI_TIM2       3U
-#define NVIC_PRI_USB        4U
-#define NVIC_PRI_DMA        5U
-#define NVIC_PRI_USART      6U
+#define NVIC_PRI_TIM2           2U
+#define NVIC_PRI_USART1_TX      3U
+#define NVIC_PRI_USART1_RX      4U
+#define NVIC_PRI_USART2_DMA     5U
+#define NVIC_PRI_USART2_INT     6U
+
+// Flash Areas (shamelessly stolen from dvmfirmware-hs)
+#define STM32_CNF_PAGE_ADDR     (uint32_t)0x0800FC00
+#define STM32_CNF_PAGE          ((uint32_t *)0x0800FC00)
+#define STM32_CNF_PAGE_24       24U
 
 // Time in ms above which critical routines will throw a warning
 #define FUNC_TIMER_WARN     10U
 
-#ifndef GITHASH
-#define GITHASH "00000000"
-#endif
+#define FW_MAJ  "2"
+#define FW_MIN  "2"
+#define FW_REV  "0"
 
-#define VERSION_STRING      "DVM-V24 FW V2.1 (" GITHASH ")"
+#ifdef DVM_V24_V1
+#define VERSION_STRING      "DVM-V24-V1 FW V" FW_MAJ "." FW_MIN "." FW_REV " (" GIT_HASH ")"
+#else
+#define VERSION_STRING      "DVM-V24-V2 FW V" FW_MAJ "." FW_MIN "." FW_REV " (" GIT_HASH ")"
+#endif
 #define BUILD_DATE_STRING   __DATE__ " " __TIME__
 #define HARDWARE_STRING     VERSION_STRING ", " BUILD_DATE_STRING
 

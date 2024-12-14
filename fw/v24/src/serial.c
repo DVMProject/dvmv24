@@ -12,6 +12,8 @@
 #include "stdbool.h"
 #include "config.h"
 #include "util.h"
+#include "leds.h"
+#include "vcp.h"
 
 uint8_t serialDMABuffer[SERIAL_BUFFER_SIZE];
 
@@ -61,25 +63,32 @@ void SerialCallback(UART_HandleTypeDef *huart)
 */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-    uint16_t bytes = SerialFillDMA();
-    if (bytes > 0)
+    if (huart->Instance == USART2)
     {
-        HAL_UART_Transmit_DMA(huart, serialDMABuffer, bytes);
+        uint16_t bytes = SerialFillDMA();
+        if (bytes > 0)
+        {
+            HAL_UART_Transmit_DMA(huart, serialDMABuffer, bytes);
+        }
+        else
+        {
+            serialTxSending = false;
+        }
     }
-    else
+    #ifndef DVM_V24_V1
+    else if (huart->Instance == USART1)
     {
-        serialTxSending = false;
+        VCPTxComplete();
     }
+    #endif
 }
 
 /**
  *  @brief uart write command, writes bytes directly to terminal
- *  @param *huart: hardware UART object (pointer)
  *  @param *data: data array (pointer)
  *  @retval none
  */
-void SerialWrite(UART_HandleTypeDef *huart, const char *data) {
-    //HAL_UART_Transmit_IT(huart, (uint8_t*)data, strlen(data));
+void SerialWrite(const char *data) {
     uint16_t len = strlen(data);
     for (int i=0; i<len; i++)
     {
@@ -95,16 +104,16 @@ void SerialWrite(UART_HandleTypeDef *huart, const char *data) {
  *  @param *data: data array (pointer)
  *  @retval none
  */
-void SerialWriteLn(UART_HandleTypeDef *huart, const char *data) {
-    SerialWrite(huart, data);
-    SerialWrite(huart, "\r\n");
+void SerialWriteLn(const char *data) {
+    SerialWrite(data);
+    SerialWrite("\r\n");
 }
 
 /**
  *  @brief Clears the serial terminal
 */
-void SerialClear(UART_HandleTypeDef *huart) {
-    SerialWrite(huart, "\033c");
+void SerialClear() {
+    SerialWrite("\033c");
 }
 
 /**
@@ -112,19 +121,19 @@ void SerialClear(UART_HandleTypeDef *huart) {
  *  @param none
  *  @retval none
  */
-void SerialStartup(UART_HandleTypeDef *huart) {
-    SerialWriteLn(huart, W3AXL_LINE1);
-    SerialWriteLn(huart, W3AXL_LINE2);
-    SerialWriteLn(huart, W3AXL_LINE3);
-    SerialWriteLn(huart, W3AXL_LINE4);
-    SerialWriteLn(huart, W3AXL_LINE5);
-    SerialWriteLn(huart, "");
-    SerialWriteLn(huart, "    " VERSION_STRING);
-    SerialWriteLn(huart, "    " BUILD_DATE_STRING);
-    SerialWrite(huart, "    SERIAL: ");
+void SerialStartup() {
+    SerialWriteLn(W3AXL_LINE1);
+    SerialWriteLn(W3AXL_LINE2);
+    SerialWriteLn(W3AXL_LINE3);
+    SerialWriteLn(W3AXL_LINE4);
+    SerialWriteLn(W3AXL_LINE5);
+    SerialWriteLn( "");
+    SerialWriteLn("    " VERSION_STRING);
+    SerialWriteLn("    " BUILD_DATE_STRING);
+    SerialWrite("    SERIAL: ");
     // Get chip UID (24-character hex string)
     char buffer[25];
     getUidString(buffer);
-    SerialWriteLn(huart, buffer);
-    SerialWriteLn(huart, "");
+    SerialWriteLn(buffer);
+    SerialWriteLn("");
 }

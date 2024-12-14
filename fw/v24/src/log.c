@@ -80,7 +80,7 @@ static void stdout_callback(log_Event *ev) {
 #endif
   vsprintf(fullBuf + strlen(fullBuf), ev->fmt, ev->ap);
   sprintf(fullBuf + strlen(fullBuf), "\x1b[0m\r\n");
-  SerialWrite(uart, fullBuf);
+  SerialWrite(fullBuf);
   memset(fullBuf, 0, MAX_MSG_LENGTH);
 }
 

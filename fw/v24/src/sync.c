@@ -134,14 +134,14 @@ bool SyncAddTxByte(const uint8_t byte)
     return true;
 }
 
-bool SyncAddTxBytes(const uint8_t *bytes, int len)
+bool SyncAddTxBytes(const uint8_t *bytes, unsigned int len)
 {
     if (len > SYNC_TX_BUF_LEN)
     {
         log_error("Tried to add more TX bytes than TX buffer supports!");
         return false;
     }
-    for (int i=0; i<len; i++)
+    for (unsigned int i=0; i<len; i++)
     {
         if (!SyncAddTxByte(bytes[i]))
         {

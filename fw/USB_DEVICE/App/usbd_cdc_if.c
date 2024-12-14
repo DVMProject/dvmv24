@@ -89,10 +89,10 @@
 /* Create buffer for reception and transmission           */
 /* It's up to user to redefine and/or remove those define */
 /** Received data over USB are stored in this buffer      */
-uint8_t UserRxBufferFS[P25_V24_LDU_FRAME_LENGTH_BYTES * 2];
+uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 
 /** Data to send over USB CDC are stored in this buffer   */
-uint8_t UserTxBufferFS[P25_V24_LDU_FRAME_LENGTH_BYTES * 2];
+uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 
@@ -268,7 +268,9 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
+  #ifdef DVM_V24_V1
     VCPRxITCallback(Buf, *Len);
+  #endif
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   return (USBD_OK);
@@ -290,12 +292,14 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
+  #ifdef DVM_V24_V1
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
   if (hcdc->TxState != 0){
     return USBD_BUSY;
   }
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+  #endif
   /* USER CODE END 7 */
   return result;
 }

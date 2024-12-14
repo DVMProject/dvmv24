@@ -43,8 +43,12 @@ void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  // Disabling this for now since we're using IT mode instead of DMA mode for USARt 1 */
+  //HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, NVIC_PRI_USART1_RX, 0);
+  //HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, NVIC_PRI_DMA, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, NVIC_PRI_USART2_DMA, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
 
 }

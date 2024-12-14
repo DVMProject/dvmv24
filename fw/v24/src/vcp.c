@@ -10,13 +10,20 @@
 
 #include "leds.h"
 #include "stdio.h"
-#include "usbd_cdc_if.h"
 #include "log.h"
 #include "fifo.h"
 #include "util.h"
 #include "config.h"
 #include "string.h"
 #include "hdlc.h"
+#include "main.h"
+
+#ifdef DVM_V24_V1
+#include "usbd_cdc_if.h"
+#else
+#include "usart.h"
+#include "stdlib.h"
+#endif
 
 // Indicates if the host has opened the port
 extern bool USB_VCP_DTR;
@@ -48,6 +55,11 @@ FIFO_t vcpRxFifo = {
     .maxlen = VCP_RX_BUF_LEN
 };
 
+// Buffer for tx message
+uint8_t txBuffer[VCP_MAX_MSG_LENGTH_BYTES];
+// TX message position/length
+uint16_t txPos = 0U;
+
 // VCP RX FIFO
 uint8_t vcpTxBuf[VCP_TX_BUF_LEN];
 FIFO_t vcpTxFifo = {
@@ -57,27 +69,24 @@ FIFO_t vcpTxFifo = {
     .maxlen = VCP_TX_BUF_LEN
 };
 
+// Vars for V2 serial implementation
+#ifndef DVM_V24_V1
+bool usartRx = false;
+bool usartTx = false;
+unsigned long usartTxStart = 0;
+uint8_t usartRxBuffer = 0;
+#endif
+
 /**
- * @brief Called by the CDC_Receive_FS interrupt callback and fills the FIFO with the received bytes
-*/
-void VCPRxITCallback(uint8_t* buf, uint32_t len)
+ * @brief Clear the RX buffers related to the VCP RX routines
+ * 
+ */
+void vcpRxClearBuffer()
 {
-    uint32_t start = HAL_GetTick();
-    for (uint32_t i = 0; i < len; i++)
-    {
-        if (FifoPush(&vcpRxFifo, buf[i]))
-        {
-            log_error("VCP RX FIFO full! Clearing buffer");
-            // Clear
-            FifoClear(&vcpRxFifo);
-        }
-    }
-    if (HAL_GetTick() - start > FUNC_TIMER_WARN)
-    {
-        log_warn("VCPRxITCallback took %u ms!", HAL_GetTick() - start);
-    }
-    #ifdef TRACE_VCP_RX
-    log_debug("Added %u bytes to VCP RX FIFO", len);
+    // Clear FIFO
+    FifoClear(&vcpRxFifo);
+    #ifndef DVM_V24_V1
+    usartRxBuffer = 0x00U;
     #endif
 }
 
@@ -92,6 +101,103 @@ void vcpRxReset()
     vcpRxMsgPosition = 0U;
 }
 
+#ifdef DVM_V24_V1
+
+/**
+ * @brief Called by the CDC_Receive_FS interrupt callback and fills the FIFO with the received bytes
+*/
+void VCPRxITCallback(uint8_t* buf, uint32_t len)
+{
+    uint32_t start = HAL_GetTick();
+    for (uint32_t i = 0; i < len; i++)
+    {
+        if (FifoPush(&vcpRxFifo, buf[i]))
+        {
+            log_error("VCP RX FIFO full! Clearing buffer");
+            // Clear
+            vcpRxClearBuffer();
+        }
+    }
+    if (HAL_GetTick() - start > FUNC_TIMER_WARN)
+    {
+        log_warn("VCPRxITCallback took %u ms!", HAL_GetTick() - start);
+    }
+    #ifdef TRACE_VCP_RX
+    log_debug("Added %u bytes to VCP RX FIFO", len);
+    #endif
+}
+
+/**
+ * @brief Toggles the 1.5k resistor on D+ to renumerate the USB device
+*/
+void VCPEnumerate()
+{
+    USB_ENUM(0);
+    HAL_Delay(50);
+    USB_ENUM(1);
+}
+
+#else
+
+/**
+ * @brief Interrupt handler for USART1 RX
+ * 
+ * @param huart uart to handle (should be usart1)
+ */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    uint32_t start = HAL_GetTick();
+    // Add received byte to the fifo
+    if (FifoPush(&vcpRxFifo, usartRxBuffer))
+    {
+        log_error("VCP RX FIFO full! Clearing buffer");
+        FifoClear(&vcpRxFifo);
+    }
+    // Check how long this took
+    if (HAL_GetTick() - start > FUNC_TIMER_WARN)
+    {
+        log_warn("HAL_UART_RxCpltCallback took %u ms!", HAL_GetTick() - start);
+    }
+    // Call the interrupt again
+    HAL_UART_Receive_IT(huart, &usartRxBuffer, 1);
+}
+
+/**
+ * @brief Handle errors during UART operation
+ * 
+ * @param huart 
+ */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    log_error("Got UART error: %02X", huart->ErrorCode);
+    VCPWriteDebug2("Got HAL UART error code ", huart->ErrorCode);
+    vcpRxReset();
+    vcpRxClearBuffer();
+}
+
+/**
+ * @brief Called by the HAL_UART_TxCpltCallback in serial.c
+ */
+void VCPTxComplete()
+{
+    // Check for excessive delay
+    unsigned long txTime = HAL_GetTick() - usartTxStart;
+    if (txTime > VCP_TX_TIMEOUT)
+    {
+        log_error("VCP USART TX routine took %u ms!", txTime);
+        VCPWriteDebug1("VCP USART TX routine took > " STR(VCP_TX_TIMEOUT) "ms");
+    }
+    // Reset buffer & position
+    memset(txBuffer, 0x00U, VCP_MAX_MSG_LENGTH_BYTES);
+    txPos = 0;
+    // Reset LED
+    LED_USB_TX(0);
+    // Reset flag
+    usartTx = false;
+}
+
+#endif
+
 /**
  * @brief Called during main loop to handle any data received from USB
 */
@@ -103,11 +209,21 @@ void VCPRxCallback()
     
     */
 
+    #ifndef DVM_V24_V1
+    if (!usartRx)
+    {
+        HAL_UART_Receive_IT(&huart1, &usartRxBuffer, 1);
+        usartRx = true;
+        log_info("Started USART1 RX IT transfer");
+    }
+    #endif
+
+
     uint32_t start = HAL_GetTick();
 
     if (vcpRxFifo.size > 0)
     {
-        #ifdef DEBUG_VCP_RX
+        #ifdef TRACE_VCP_RX
         log_debug("VCP RX FIFO size: %d/%d", vcpRxFifo.size, vcpRxFifo.maxlen);
         #endif
     }
@@ -116,7 +232,11 @@ void VCPRxCallback()
     while (vcpRxFifo.size > 0)
     {
         // Turn activity LED on
+        #ifdef DVM_V24_V1
         LED_USB(1);
+        #else
+        LED_USB_RX(1);
+        #endif
 
         // Read a byte
         uint8_t c;
@@ -232,6 +352,7 @@ void VCPRxCallback()
                 {
                     // Send P25 data as a UI frame
                     case CMD_P25_DATA:
+                    {
                         // Process the UI frame
                         #ifdef DEBUG_VCP_RX
                         log_debug("Sending UI frame of length %d via HDLC", vcpRxMsgLength - offset - 2U);
@@ -243,6 +364,7 @@ void VCPRxCallback()
                         #endif
                         // Send the UI, ignoring the first 0x00 byte
                         HDLCSendUI(vcpRxMsg + offset + 2, vcpRxMsgLength - offset - 2);
+                    }
                     break;
                     // Reply to version request
                     case CMD_GET_VERSION:
@@ -252,11 +374,25 @@ void VCPRxCallback()
                     case CMD_GET_STATUS:
                         sendStatus();
                     break;
+                    // Ignore config set command
+                    case CMD_SET_CONFIG:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Ignoring CMD_SET_CONFIG, no config to set");
+                        #endif
+                        VCPWriteAck(CMD_SET_CONFIG);
+                    break;
                     // Ignore mode set command
                     case CMD_SET_MODE:
                         #ifdef DEBUG_VCP_RX
                         log_debug("Ignoring CMD_SET_MODE, always in P25 mode");
                         #endif
+                    break;
+                    // Ignore RF params config
+                    case CMD_SET_RFPARAMS:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Ignoring CMD_SET_RFPARAMS, no RF params to set");
+                        #endif
+                        VCPWriteAck(CMD_SET_RFPARAMS);
                     break;
                     case CMD_P25_CLEAR:
                         #ifdef DEBUG_VCP_RX
@@ -272,9 +408,43 @@ void VCPRxCallback()
                         #endif
                         VCPWriteAck(CMD_CAL_DATA);
                     break;
+                    
+                    // Flash read/write is only supported on DVM-V24-V2
+                    #ifndef DVM_V24_V1
+                    // Flash Read
+                    case CMD_FLASH_READ:
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Reading flash to serial port");
+                        #endif
+                        flashRead();
+                    break;
+                    // Flash Write
+                    case CMD_FLASH_WRITE:
+                    {
+                        #ifdef DEBUG_VCP_RX
+                        log_debug("Writing data to flash from serial port");
+                        #endif
+                        uint8_t err = flashWrite(vcpRxMsg + 3U, vcpRxMsgLength - 3U);
+                        if (err == RSN_OK)
+                        {
+                            VCPWriteAck(CMD_FLASH_WRITE);
+                        }
+                        else
+                        {
+                            log_error("Invalid flash data write: %u", err);
+                            VCPWriteNak(CMD_FLASH_WRITE, err);
+                        }
+                    }
+                    break;
+                    #endif
+                    // Reset MCU
+                    case CMD_RESET_MCU:
+                        ResetMCU();
+                    break;
                     // Default handler
                     default:
                         log_warn("VCP RX: Unhandled DVM command %02X", vcpRxMsg[offset]);
+                        VCPWriteNak(vcpRxMsg[offset], RSN_INVALID_REQUEST);
                     break;
                 }
 
@@ -295,7 +465,20 @@ void VCPRxCallback()
         }
 
         // turn activity LED off
+        #ifdef DVM_V24_V1
         LED_USB(0);
+        #else
+        LED_USB_RX(0);
+        #endif
+    }
+
+    // Timeout and reset if we haven't received a full message
+    if ((vcpRxMsgPosition > 0) && (HAL_GetTick() - vcpRxLastByte > VCP_RX_TIMEOUT))
+    {
+        log_error("Timed out waiting for full VCP message, resetting");
+        VCPWriteDebug1("Timed out waiting for full VCP message, resetting");
+        vcpRxReset();
+        vcpRxClearBuffer();
     }
 
     // Check elapsed time
@@ -305,11 +488,26 @@ void VCPRxCallback()
     }
 }
 
+/**
+ * @brief VCP TX callback for handling outgoing messages to the host
+ */
 void VCPTxCallback()
 {  
-    // Buffer for tx message
-    uint8_t txBuffer[VCP_MAX_MSG_LENGTH_BYTES];
-    uint16_t txPos = 0U;
+    #ifdef DVM_V24_V1
+    // On V1, since we use USB, we don't have a CPLT callback and clear these here
+    if (txPos > 0)
+    {
+        memset(txBuffer, 0x00U, VCP_MAX_MSG_LENGTH_BYTES);
+        txPos = 0;
+    }
+    #else
+    // On V2, everything is cleared by the complete callback so we just check if we're currently transmitting
+    if (usartTx)
+    {
+        return;
+    }
+    usartTxStart = HAL_GetTick();
+    #endif
 
     // Write any bytes in the VCP TX queue
     while (vcpTxFifo.size > 0)
@@ -333,6 +531,8 @@ void VCPTxCallback()
         return;
     }
 
+    #ifdef DVM_V24_V1
+    
     // Directly write to the VCP
     bool sent = false;
     uint8_t attempts = USB_TX_RETRIES;
@@ -367,6 +567,26 @@ void VCPTxCallback()
     {
         log_error("Failed to write to USB port");
     }
+    #else
+
+    // Turn LED on (turned off by TX cplt callback)
+    LED_USB_TX(1);
+
+    // Set flag
+    usartTx = true;
+
+    // Write to USART1
+    //HAL_UART_Transmit_DMA(&huart1, txBuffer, txPos);
+    //HAL_UART_Transmit(&huart1, txBuffer, txPos, VCP_TX_TIMEOUT);
+    HAL_UART_Transmit_IT(&huart1, txBuffer, txPos);
+
+    #ifdef DEBUG_VCP_TX
+    log_debug("Sent %u-byte message to VCP TX DMA", txPos);
+    #endif
+
+    //VCPTxComplete();
+
+    #endif
 }
 
 /**
@@ -380,11 +600,13 @@ void VCPTxCallback()
 bool VCPWrite(uint8_t *data, uint16_t len)
 {    
     // Return false if the port isn't open
+    #ifdef DVM_V24_V1
     if (!USB_VCP_DTR)
     {
         log_warn("USB VCP not open, dropping message");
         return false;
     }
+    #endif
 
     // Add to TX fifo
     for (int i = 0; i < len; i++)
@@ -415,6 +637,27 @@ bool VCPWriteAck(uint8_t cmd)
     buffer[3U] = cmd;
 
     return VCPWrite(buffer, 4U);
+}
+
+/**
+ * @brief Send a NACK back
+ * 
+ * @param cmd 
+ * @param err 
+ * @return true 
+ * @return false 
+ */
+bool VCPWriteNak(uint8_t cmd, uint8_t err)
+{
+    uint8_t buffer[5U];
+
+    buffer[0U] = DVM_SHORT_FRAME_START;
+    buffer[1U] = 5U;
+    buffer[2U] = CMD_NAK;
+    buffer[3U] = cmd;
+    buffer[4U] = err;
+
+    return VCPWrite(buffer, 5U);
 }
 
 /**
@@ -498,16 +741,14 @@ void sendStatus()
     // Mode (always P25 mode)
     reply[3U] = 0x08U;
 
-    // Report P25 mode only if HDLC peer is connected
+    // Report if V24 peer is connected or not
     if (HDLCPeerConnected)
     {
-        reply[4U] = STATE_P25;
+        reply[3U] |= 0x40U;
     }
-    else
-    {
-        reply[4U] = STATE_IDLE;
-    }
-    
+
+    // Report P25 mode always
+    reply[4U] = STATE_P25;
 
     // Calculate free space in the VCP RX FIFO
     #ifdef STATUS_SPACE_BLOCKS
@@ -540,6 +781,88 @@ void sendStatus()
     log_trace("Sent DVM status information");
     #endif*/
 }
+
+#ifndef DVM_V24_V1
+
+/**
+ * @brief Read out the STM32 config flash page and send to the serial port
+ * 
+ * @return uint8_t 
+ */
+void flashRead()
+{
+    uint8_t reply[249U];
+    reply[0U] = DVM_SHORT_FRAME_START;
+    reply[1U] = 249U;
+    reply[2U] = CMD_FLASH_READ;
+
+    memcpy(reply + 3U, (void*)STM32_CNF_PAGE, 246U);
+
+    VCPWrite(reply, 249U);
+}
+
+/**
+ * @brief Write to STM32 config flash page
+ * 
+ * @param data data to write
+ * @param length length of data to write
+ * @return uint8_t return reason
+ */
+uint8_t flashWrite(const uint8_t* data, uint8_t length)
+{
+    if (length > 249U)
+    {
+        log_error("Flash write too big! %u > %u", length, 249U);
+        return RSN_FLASH_WRITE_TOO_BIG;
+    }
+
+    // Unlock flash
+    HAL_FLASH_Unlock();
+
+    // Erase
+    static FLASH_EraseInitTypeDef EraseInitStruct;
+    uint32_t sectorError;
+    EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+    EraseInitStruct.PageAddress = STM32_CNF_PAGE_ADDR;
+    EraseInitStruct.NbPages     = 1;
+    HAL_StatusTypeDef status;
+    status = HAL_FLASHEx_Erase(&EraseInitStruct, &sectorError);
+    if (status != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        log_error("HAL_FLASHEx_Erase failed with code %u", status);
+        return RSN_FAILED_ERASE_FLASH;
+    }
+
+    // Compile bytes into words
+    uint32_t address = STM32_CNF_PAGE_ADDR;
+    uint8_t i = 0;
+    while (i < length)
+    {
+        uint32_t word = 
+            (uint32_t)(data[i + 3] << 24) +
+            (uint32_t)(data[i + 2] << 16) +
+            (uint32_t)(data[i + 1] << 8) +
+            (uint32_t)(data);
+
+        status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, word);
+        if (status != HAL_OK)
+        {
+            HAL_FLASH_Lock();
+            log_error("HAL_FLASH_Program failed to write address %08X with code %u", address, status);
+            return RSN_FAILED_WRITE_FLASH;
+        }
+        else
+        {
+            address += 4;
+            i += 4;
+        }
+    }
+    HAL_FLASH_Lock();
+    return RSN_OK;
+}
+
+#endif
 
 /**
  * @brief Write a debug message to the USB port, using the DVMHost modem format
@@ -743,14 +1066,4 @@ bool VCPWriteDebug4(const char *text, int16_t n1, int16_t n2, int16_t n3)
 
     // Return
     return ret;
-}
-
-/**
- * @brief Toggles the 1.5k resistor on D+ to renumerate the USB device
-*/
-void VCPEnumerate()
-{
-    USB_ENUM(0);
-    HAL_Delay(50);
-    USB_ENUM(1);
 }
