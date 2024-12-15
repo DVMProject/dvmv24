@@ -32,7 +32,7 @@ extern "C" {
 //#define TRACE_VCP
 
 // Enable periodic status print
-#define PERIODIC_STATUS
+//#define PERIODIC_STATUS
 // Interval in ms for the periodic status print
 #define PERIODIC_STATUS_INT 30000
 
@@ -55,7 +55,7 @@ extern "C" {
 #define FUNC_TIMER_WARN     10U
 
 #define FW_MAJ  "2"
-#define FW_MIN  "2"
+#define FW_MIN  "3"
 #define FW_REV  "0"
 
 #ifdef DVM_V24_V1
